@@ -41,7 +41,7 @@ const Portfolio: React.FC = () => {
     return { profile, brokers, holdings, latestPrices, latestSnapshot };
   }, []);
 
-  const baseCurrency = data?.profile?.base_currency ?? 'EUR';
+  const baseCurrency = (data?.profile?.base_currency ?? 'EUR').toUpperCase();
 
   const holdingsWithValue = useMemo(() => {
     if (!data) return [];

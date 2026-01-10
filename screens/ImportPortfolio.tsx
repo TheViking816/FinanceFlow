@@ -36,7 +36,7 @@ const ImportPortfolio: React.FC = () => {
     return { profile };
   }, []);
 
-  const baseCurrency = data?.profile?.base_currency ?? 'EUR';
+  const baseCurrency = (data?.profile?.base_currency ?? 'EUR').toUpperCase();
   const { rates: fxRates, loading: fxLoading } = useFxRates(baseCurrency);
 
   const totals = useMemo(() => {

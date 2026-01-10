@@ -48,7 +48,7 @@ const Dashboard: React.FC = () => {
     return { profile, accounts, categories, transactions, holdings, latestPrices, snapshots, latestSnapshot };
   }, []);
 
-  const baseCurrency = data?.profile?.base_currency ?? 'EUR';
+  const baseCurrency = (data?.profile?.base_currency ?? 'EUR').toUpperCase();
   const displayName = data?.profile?.display_name || 'Tu perfil';
   const initials = displayName.trim()
     ? displayName
