@@ -400,8 +400,14 @@ export const syncSheetPricesToSupabase = async (holdings: Holding[]) => {
   }>;
 
   if (!payload.length) return 0;
+  const deduped = new Map<string, typeof payload[number]>();
+  payload.forEach((entry) => {
+    const key = `${entry.ticker}|${entry.market}|${entry.price_date}`;
+    deduped.set(key, entry);
+  });
+  const uniquePayload = Array.from(deduped.values());
 
-  for (const batch of chunk(payload, 50)) {
+  for (const batch of chunk(uniquePayload, 50)) {
     const { error } = await supabase
       .from('security_prices')
       .upsert(batch, { onConflict: 'ticker,market,price_date' });
@@ -421,9 +427,9 @@ export const syncSheetPricesToSupabase = async (holdings: Holding[]) => {
   }
   window.localStorage.setItem(
     UPSERT_DEBUG_KEY,
-    JSON.stringify({ at: new Date().toISOString(), message: null, sample: payload[0] })
+    JSON.stringify({ at: new Date().toISOString(), message: null, sample: uniquePayload[0] })
   );
-  return payload.length;
+  return uniquePayload.length;
 };
 
 export const getSheetUpsertDebug = () => {

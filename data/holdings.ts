@@ -66,7 +66,23 @@ export const syncHoldingsFromSheet = async () => {
   const user = await requireAuth();
   const entries = await getSheetHoldings();
   if (!entries.length) return 0;
-  const payload = entries.map((entry) => ({
+  const merged = new Map<string, typeof entries[number]>();
+  entries.forEach((entry) => {
+    const key = `${entry.ticker}|${entry.market ?? ''}`;
+    const current = merged.get(key);
+    if (!current) {
+      merged.set(key, entry);
+      return;
+    }
+    merged.set(key, {
+      ...entry,
+      quantity: Number(current.quantity) + Number(entry.quantity),
+      price: entry.price || current.price,
+      name: entry.name || current.name,
+      currency: entry.currency || current.currency,
+    });
+  });
+  const payload = Array.from(merged.values()).map((entry) => ({
     user_id: user.id,
     broker_id: null,
     ticker: entry.ticker,
