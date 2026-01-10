@@ -49,9 +49,28 @@ const Portfolio: React.FC = () => {
     return { profile, brokers, holdings, latestPrices, latestSnapshot };
   }, []);
 
+  const handleRefreshHoldings = async () => {
+    if (syncingHoldings) return;
+    try {
+      setSyncingHoldings(true);
+      const updated = await syncHoldingsFromSheet();
+      if (updated) {
+        const freshHoldings = await listHoldings();
+        await syncSheetPricesToSupabase(freshHoldings);
+      }
+      refetch();
+      showToast(updated ? `Holdings actualizados: ${updated}` : 'Sin cambios en holdings.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'No se pudo importar holdings.', 'error');
+    } finally {
+      setSyncingHoldings(false);
+    }
+  };
+
   const handleRefreshPrices = async () => {
     if (!data) return;
     try {
+      await handleRefreshHoldings();
       const updated = await syncSheetPricesToSupabase(data.holdings);
       refetch();
       showToast(updated ? `Precios sincronizados: ${updated}` : 'Sin cambios en precios.', 'success');
@@ -68,8 +87,10 @@ const Portfolio: React.FC = () => {
   }, [refetch]);
 
   useEffect(() => {
-    if (!data || data.holdings.length) return;
+    if (!data) return;
     if (syncingHoldings) return;
+    const allZero = data.holdings.length > 0 && data.holdings.every((holding) => Number(holding.quantity) === 0);
+    if (data.holdings.length > 0 && !allZero) return;
     setSyncingHoldings(true);
     syncHoldingsFromSheet()
       .then(async (count) => {
@@ -260,21 +281,22 @@ const Portfolio: React.FC = () => {
             <span className="material-symbols-outlined text-slate-500 text-[18px]">timeline</span>
             <span className="text-slate-500 text-sm font-semibold">Actualiza precios desde cada activo</span>
           </div>
-          <button
-            className="mt-3 h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-500"
-            onClick={handleRefreshPrices}
-          >
-            Actualizar precios ahora
-          </button>
-          {data?.holdings.length === 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             <button
-              className="mt-2 h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-primary/20 text-primary"
-              onClick={() => syncHoldingsFromSheet().then(refetch)}
+              className="h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-500"
+              onClick={handleRefreshPrices}
               disabled={syncingHoldings}
             >
-              {syncingHoldings ? 'Importando...' : 'Importar holdings desde Sheets'}
+              Actualizar precios ahora
             </button>
-          )}
+            <button
+              className="h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-primary/20 text-primary"
+              onClick={handleRefreshHoldings}
+              disabled={syncingHoldings}
+            >
+              {syncingHoldings ? 'Importando...' : 'Actualizar holdings desde Sheets'}
+            </button>
+          </div>
           {(sheetTime || hasSheetPrices) && (
             <div className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">
               Precios desde Sheets · {sheetTime ?? 'sincronizado'}
