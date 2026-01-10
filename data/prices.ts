@@ -94,12 +94,27 @@ const resolveSheetUrls = (input: string) => {
   return Array.from(urls);
 };
 
+const withCacheBuster = (raw: string) => {
+  try {
+    const url = new URL(raw);
+    if (!url.searchParams.has('_ts')) {
+      url.searchParams.set('_ts', Date.now().toString());
+    }
+    return url.toString();
+  } catch {
+    return raw;
+  }
+};
+
 const fetchSheetText = async (input: string) => {
-  const candidates = resolveSheetUrls(input);
+  const candidates = resolveSheetUrls(input).map(withCacheBuster);
   const attempts: Array<{ url: string; status?: number; error?: string }> = [];
   for (const candidate of candidates) {
     try {
-      const response = await fetch(candidate, { cache: 'no-store' });
+      const response = await fetch(candidate, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
       attempts.push({ url: candidate, status: response.status });
       if (response.ok) {
         window.localStorage.setItem(
