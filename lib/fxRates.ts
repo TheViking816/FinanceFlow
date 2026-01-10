@@ -103,34 +103,60 @@ const splitLine = (line: string, delimiter: string) => {
 export const loadFxRatesFromSheet = async (sheetUrl: string, baseCurrency: string) => {
   const text = await fetchSheetText(sheetUrl);
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return {};
+  const headerLine = lines[0];
+  const delimiter = detectDelimiter(headerLine);
+  const headers = splitLine(headerLine, delimiter).map((header) => header.trim().toLowerCase());
+  const currencyIndex = headers.findIndex((header) => header === 'currency' || header === 'moneda');
+  const fxIndex = headers.findIndex(
+    (header) => header === 'fx_to_base' || header === 'fx' || header === 'fx_to_eur'
+  );
   const rates: Record<string, number> = {};
-  lines.forEach((line) => {
-    const delimiter = detectDelimiter(line);
-    const parts = splitLine(line, delimiter);
-    if (parts.length < 2) return;
-    const pairRaw = parts[parts.length - 1];
-    const rateRaw = parts.slice(0, -1).join(delimiter);
-    if (!rateRaw || !pairRaw) return;
-    const pair = pairRaw.trim().toUpperCase().replace(/[^A-Z]/g, '');
-    if (pair.length < 6) return;
-    const from = pair.slice(0, 3);
-    const to = pair.slice(3, 6);
-    const aliasMap: Record<string, string> = {
-      HDK: 'HKD',
-    };
-    const normalizedFrom = aliasMap[from] ?? from;
-    const normalizedTo = aliasMap[to] ?? to;
-    const rateValue = rateRaw.replace(/"/g, '').trim().replace(/\u00A0/g, '');
-    const rate = parseNumberEU(rateValue);
-    if (!rate || !Number.isFinite(rate)) return;
-    if (normalizedTo === baseCurrency) {
-      rates[normalizedFrom] = rate;
-      return;
-    }
-    if (normalizedFrom === baseCurrency) {
-      rates[normalizedTo] = 1 / rate;
-    }
-  });
+
+  if (currencyIndex >= 0 && fxIndex >= 0) {
+    lines.slice(1).forEach((line) => {
+      const parts = splitLine(line, delimiter);
+      const currency = (parts[currencyIndex] ?? '').trim().toUpperCase();
+      const fxValue = (parts[fxIndex] ?? '').toString();
+      if (!currency || !fxValue) return;
+      const rate = parseNumberEU(fxValue);
+      if (!rate || !Number.isFinite(rate)) return;
+      if (currency === baseCurrency) {
+        rates[currency] = 1;
+        return;
+      }
+      rates[currency] = rate;
+    });
+  } else {
+    lines.forEach((line, index) => {
+      if (index === 0) return;
+      const parts = splitLine(line, delimiter);
+      if (parts.length < 2) return;
+      const pairRaw = parts[parts.length - 1];
+      const rateRaw = parts.slice(0, -1).join(delimiter);
+      if (!rateRaw || !pairRaw) return;
+      const pair = pairRaw.trim().toUpperCase().replace(/[^A-Z]/g, '');
+      if (pair.length < 6) return;
+      const from = pair.slice(0, 3);
+      const to = pair.slice(3, 6);
+      const aliasMap: Record<string, string> = {
+        HDK: 'HKD',
+      };
+      const normalizedFrom = aliasMap[from] ?? from;
+      const normalizedTo = aliasMap[to] ?? to;
+      const rateValue = rateRaw.replace(/"/g, '').trim().replace(/\u00A0/g, '');
+      const rate = parseNumberEU(rateValue);
+      if (!rate || !Number.isFinite(rate)) return;
+      if (normalizedTo === baseCurrency) {
+        rates[normalizedFrom] = rate;
+        return;
+      }
+      if (normalizedFrom === baseCurrency) {
+        rates[normalizedTo] = 1 / rate;
+      }
+    });
+  }
+
   if (Object.keys(rates).length) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(rates));
   }
