@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listHoldings, createHolding, deleteAllHoldings, syncHoldingsFromSheet } from '../data/holdings';
 import { listBrokers, createBroker } from '../data/brokers';
-import { getLatestPrices, getPriceKey, getSheetPricesMeta, syncSheetPricesToSupabase } from '../data/prices';
+import { getLatestPrices, getPriceKey, getSheetFetchDebug, getSheetPricesMeta, syncSheetPricesToSupabase } from '../data/prices';
 import { getProfile } from '../data/profiles';
 import { useQuery } from '../hooks/useQuery';
 import LoadingState from '../components/LoadingState';
@@ -140,6 +140,7 @@ const Portfolio: React.FC = () => {
     return map;
   }, [filteredHoldings, baseCurrency]);
   const sheetMeta = getSheetPricesMeta();
+  const sheetDebug = getSheetFetchDebug();
   const sheetTime = sheetMeta?.updatedAt
     ? new Date(sheetMeta.updatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
     : null;
@@ -274,6 +275,17 @@ const Portfolio: React.FC = () => {
           {Object.keys(totalsByCurrency).some((currency) => currency !== baseCurrency) && (
             <div className="mt-1 text-[10px] uppercase tracking-widest text-slate-400">
               FX activo desde Google Sheets
+            </div>
+          )}
+          {sheetDebug && (
+            <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-3 py-2 text-[10px] text-slate-500">
+              <div>Sheet debug: {sheetDebug.at}</div>
+              <div>Success URL: {sheetDebug.successUrl ?? 'none'}</div>
+              {sheetDebug.attempts.slice(0, 3).map((attempt, index) => (
+                <div key={`${attempt.url}-${index}`}>
+                  {attempt.status ? `${attempt.status}` : 'error'} · {attempt.url}
+                </div>
+              ))}
             </div>
           )}
           {missingFx.length > 0 && (

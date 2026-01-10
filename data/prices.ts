@@ -95,17 +95,41 @@ const resolveSheetUrls = (input: string) => {
 
 const fetchSheetText = async (input: string) => {
   const candidates = resolveSheetUrls(input);
+  const attempts: Array<{ url: string; status?: number; error?: string }> = [];
   for (const candidate of candidates) {
     try {
       const response = await fetch(candidate, { cache: 'no-store' });
+      attempts.push({ url: candidate, status: response.status });
       if (response.ok) {
+        window.localStorage.setItem(
+          'financeflow-sheet-debug',
+          JSON.stringify({ at: new Date().toISOString(), successUrl: candidate, attempts })
+        );
         return response.text();
       }
-    } catch {
-      // try next candidate
+    } catch (error) {
+      attempts.push({ url: candidate, error: error instanceof Error ? error.message : 'fetch error' });
     }
   }
+  window.localStorage.setItem(
+    'financeflow-sheet-debug',
+    JSON.stringify({ at: new Date().toISOString(), successUrl: null, attempts })
+  );
   throw new Error('No se pudo cargar el CSV publicado.');
+};
+
+export const getSheetFetchDebug = () => {
+  try {
+    const raw = window.localStorage.getItem('financeflow-sheet-debug');
+    if (!raw) return null;
+    return JSON.parse(raw) as {
+      at: string;
+      successUrl: string | null;
+      attempts: Array<{ url: string; status?: number; error?: string }>;
+    };
+  } catch {
+    return null;
+  }
 };
 
 const detectDelimiter = (line: string) => {
