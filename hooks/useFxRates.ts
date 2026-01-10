@@ -3,7 +3,7 @@ import { loadCachedFxRates, loadFxRatesFromSheet } from '../lib/fxRates';
 
 const DEFAULT_SHEET_URL =
   (import.meta.env.VITE_FX_SHEET_URL || '').trim() ||
-  'https://docs.google.com/spreadsheets/d/1qAbm-hZsbCsmgw5udyF7rPB1C2dK59S3qF4kQ-BHy9I/edit?gid=0';
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vSYJOJWwE8W3CK9l69jvJWsyqtnAwcc6egDIALEnsb0l1U5NJ9LZBem1xzO7IM0cEOX-47GtryFBBIk/pub?output=csv';
 
 export const useFxRates = (baseCurrency: string) => {
   const normalizedBase = baseCurrency.toUpperCase();

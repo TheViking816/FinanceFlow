@@ -20,7 +20,7 @@ jobs:
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_FX_SHEET_URL: ${{ secrets.VITE_FX_SHEET_URL }}
+      VITE_FX_SHEET_URL: ${{ secrets.VITE_FX_SHEET_URL || vars.VITE_FX_SHEET_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
