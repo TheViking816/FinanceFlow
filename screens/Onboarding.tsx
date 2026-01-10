@@ -6,6 +6,7 @@ import { useSession } from '../hooks/useSession';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
 import { useToast } from '../components/ToastProvider';
+import appIcon from '../assets/icon.svg';
 
 type AuthMode = 'login' | 'register' | 'magic';
 
@@ -83,7 +84,13 @@ const Onboarding: React.FC = () => {
         showToast('Revisa tu correo para el enlace magico.', 'success');
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'No se pudo autenticar.', 'error');
+      const message =
+        err instanceof Error && err.message.includes('Invalid login credentials')
+          ? 'Credenciales invalidas o email sin confirmar.'
+          : err instanceof Error
+          ? err.message
+          : 'No se pudo autenticar.';
+      showToast(message, 'error');
     } finally {
       setAuthLoading(false);
     }
@@ -172,7 +179,7 @@ const Onboarding: React.FC = () => {
     <div className="flex h-screen flex-col bg-background-light dark:bg-background-dark p-6">
       <div className="flex-1 flex flex-col items-center justify-center gap-8 text-center">
         <div className="relative w-full aspect-square max-w-[280px] rounded-[32px] bg-white dark:bg-slate-800/50 flex items-center justify-center p-8 shadow-2xl border border-white dark:border-slate-700">
-          <span className="material-symbols-outlined text-[64px] text-primary">savings</span>
+          <img src={appIcon} alt="FinanceFlow" className="w-24 h-24" />
         </div>
         <div>
           <h1 className="text-slate-900 dark:text-white text-[32px] font-extrabold leading-tight mb-4 tracking-tighter">
