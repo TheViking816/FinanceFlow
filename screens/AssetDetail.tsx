@@ -9,13 +9,14 @@ import EmptyState from '../components/EmptyState';
 import { useToast } from '../components/ToastProvider';
 
 const buildLinePath = (values: number[], width: number, height: number) => {
-  if (values.length < 2) return '';
-  const max = Math.max(...values);
-  const min = Math.min(...values);
+  const cleaned = values.filter((value) => Number.isFinite(value));
+  if (cleaned.length < 2) return '';
+  const max = Math.max(...cleaned);
+  const min = Math.min(...cleaned);
   const span = max - min || 1;
-  return values
+  return cleaned
     .map((value, index) => {
-      const x = (index / (values.length - 1)) * width;
+      const x = (index / (cleaned.length - 1)) * width;
       const y = height - ((value - min) / span) * height;
       return `${index === 0 ? 'M' : 'L'}${x},${y}`;
     })

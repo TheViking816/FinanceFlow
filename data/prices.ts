@@ -2,8 +2,10 @@ import { supabase } from '../lib/supabaseClient';
 import { parseNumberEU } from '../lib/importers';
 import type { Holding, SecurityPrice } from '../types';
 
-const normalizeMarket = (market: string | null | undefined) => (market ?? '').trim();
-const buildKey = (ticker: string, market: string | null) => `${ticker}__${normalizeMarket(market) || 'none'}`;
+const normalizeMarket = (market: string | null | undefined) => (market ?? '').trim().toUpperCase();
+const normalizeTicker = (ticker: string) => ticker.trim().toUpperCase();
+const buildKey = (ticker: string, market: string | null) =>
+  `${normalizeTicker(ticker)}__${normalizeMarket(market) || 'none'}`;
 const SHEET_META_KEY = 'financeflow-sheet-prices-meta';
 const DEFAULT_PRICES_SHEET_URL =
   (import.meta.env.VITE_PRICES_SHEET_URL || '').trim() ||
@@ -79,12 +81,12 @@ const buildSheetPrice = (row: Record<string, string>) => {
   const rawTicker = row.ticker?.trim();
   const price = parseNumberEU(row.price ?? '');
   if (!rawTicker || !price) return null;
-  let ticker = rawTicker;
+  let ticker = rawTicker.toUpperCase();
   let market: string | null = null;
   if (rawTicker.includes(':')) {
     const [marketPart, tickerPart] = rawTicker.split(':');
-    market = marketPart?.trim() || null;
-    ticker = tickerPart?.trim() || rawTicker;
+    market = marketPart?.trim().toUpperCase() || null;
+    ticker = tickerPart?.trim().toUpperCase() || rawTicker.toUpperCase();
   }
   const currency = row.currency?.trim().toUpperCase() || null;
   const today = new Date().toISOString().slice(0, 10);
@@ -118,6 +120,10 @@ const loadPricesFromSheet = async () => {
         const fallbackKey = buildKey(price.ticker, null);
         if (!map.has(fallbackKey)) {
           map.set(fallbackKey, { ...price, market: null });
+        }
+        const prefixedKey = buildKey(`${price.market}:${price.ticker}`, null);
+        if (!map.has(prefixedKey)) {
+          map.set(prefixedKey, { ...price, market: null });
         }
       }
     });

@@ -41,6 +41,10 @@ const Portfolio: React.FC = () => {
     return { profile, brokers, holdings, latestPrices, latestSnapshot };
   }, []);
 
+  const handleRefreshPrices = () => {
+    refetch();
+  };
+
   useEffect(() => {
     const interval = window.setInterval(() => {
       refetch();
@@ -216,6 +220,12 @@ const Portfolio: React.FC = () => {
             <span className="material-symbols-outlined text-slate-500 text-[18px]">timeline</span>
             <span className="text-slate-500 text-sm font-semibold">Actualiza precios desde cada activo</span>
           </div>
+          <button
+            className="mt-3 h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-500"
+            onClick={handleRefreshPrices}
+          >
+            Actualizar precios ahora
+          </button>
           {(sheetTime || hasSheetPrices) && (
             <div className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">
               Precios desde Sheets · {sheetTime ?? 'sincronizado'}
