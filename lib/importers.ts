@@ -107,6 +107,22 @@ export const parseNumberEU = (value: string) => {
   return Number.parseFloat(cleaned);
 };
 
+const normalizeIbkrMarket = (value: string) => {
+  const raw = value.trim().toUpperCase();
+  const map: Record<string, string> = {
+    BM: 'BME',
+    AEB: 'AMS',
+    SBF: 'EPA',
+    LSE: 'LON',
+    NYSE: 'NYSE',
+    NASDAQ: 'NASDAQ',
+    NYSEARCA: 'NYSEARCA',
+    ARCA: 'NYSEARCA',
+    SEHK: 'HKG',
+  };
+  return map[raw] ?? raw;
+};
+
 export const parseDateYYYYMMDD = (value: string) => {
   if (!value || value.length !== 8) return null;
   const year = value.slice(0, 4);
@@ -150,7 +166,7 @@ export const parseIbkrPositionsCsv = (text: string, includeCash: boolean): Impor
     const value = Number.parseFloat(record.PositionValue ?? '0');
     const avgPrice = Number.parseFloat(record.CostBasisPrice ?? '0');
     const currency = (record.CurrencyPrimary ?? '').trim();
-    const market = (record.ListingExchange ?? '').trim();
+    const market = normalizeIbkrMarket(record.ListingExchange ?? '');
     const rowWarnings: string[] = [];
 
     if (!symbol && !isin) rowWarnings.push('Sin identificador');
@@ -180,6 +196,20 @@ export const parseIbkrPositionsCsv = (text: string, includeCash: boolean): Impor
   }
 
   return { provider: 'IBKR', rows, ignored, warnings, reportDate: rows[0]?.reportDate ?? reportDateFallback };
+};
+
+export const buildIsinMapFromIbkr = (text: string) => {
+  const parsed = parseIbkrPositionsCsv(text, true);
+  const map = new Map<string, { symbol: string; market: string; currency: string }>();
+  parsed.rows.forEach((row) => {
+    if (!row.isin) return;
+    map.set(row.isin.toUpperCase(), {
+      symbol: row.symbol,
+      market: row.market,
+      currency: row.currency,
+    });
+  });
+  return map;
 };
 
 export const parseDegiroPortfolioCsv = (text: string, reportDate: string, includeCash: boolean): ImportPreview => {

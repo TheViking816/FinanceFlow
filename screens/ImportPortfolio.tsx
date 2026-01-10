@@ -1,6 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { parseDegiroPortfolioCsv, parseIbkrPositionsCsv, detectProviderFromText, type ImportPreview } from '../lib/importers';
+import {
+  parseDegiroPortfolioCsv,
+  parseIbkrPositionsCsv,
+  detectProviderFromText,
+  buildIsinMapFromIbkr,
+  type ImportPreview,
+} from '../lib/importers';
 import PreviewTable from '../components/PreviewTable';
 import { useQuery } from '../hooks/useQuery';
 import { getProfile } from '../data/profiles';
@@ -30,6 +36,7 @@ const ImportPortfolio: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [preferredProvider, setPreferredProvider] = useState<'IBKR' | 'DEGIRO' | null>(null);
   const [includeNonBase, setIncludeNonBase] = useState(false);
+  const [isinMap, setIsinMap] = useState<Map<string, { symbol: string; market: string; currency: string }> | null>(null);
 
   const { data, loading: profileLoading, error } = useQuery(async () => {
     const profile = await getProfile();
@@ -118,6 +125,19 @@ const ImportPortfolio: React.FC = () => {
       return;
     }
     const nextPreview = parseDegiroPortfolioCsv(text, selectedDate, includeCash);
+    if (isinMap) {
+      nextPreview.rows = nextPreview.rows.map((row) => {
+        if (!row.isin) return row;
+        const mapped = isinMap.get(row.isin.toUpperCase());
+        if (!mapped) return row;
+        return {
+          ...row,
+          symbol: mapped.symbol,
+          market: mapped.market,
+          currency: mapped.currency || row.currency,
+        };
+      });
+    }
     setPreview(nextPreview);
   };
 
@@ -125,6 +145,14 @@ const ImportPortfolio: React.FC = () => {
     const text = await file.text();
     setRawText(text);
     parseFile(text);
+  };
+
+  const handleIsinMapFile = async (file: File) => {
+    const text = await file.text();
+    setIsinMap(buildIsinMapFromIbkr(text));
+    if (rawText) {
+      parseFile(rawText);
+    }
   };
 
   const handleImport = async () => {
@@ -279,6 +307,20 @@ const ImportPortfolio: React.FC = () => {
               }}
             />
           </label>
+          {preferredProvider === 'DEGIRO' && (
+            <div className="flex flex-col gap-2 text-xs text-slate-500">
+              <span className="font-semibold">CSV IBKR (opcional para mapear ISIN)</span>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) handleIsinMapFile(file);
+                }}
+                className="rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-2 py-1"
+              />
+            </div>
+          )}
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <input
               type="checkbox"
