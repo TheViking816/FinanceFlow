@@ -148,9 +148,25 @@ export type SheetHoldingEntry = {
   priceDate: string;
 };
 
+const normalizeHeaderKey = (value: string) => value.replace(/\s+/g, '').toLowerCase();
+
+const getRowValue = (row: Record<string, string>, keys: string[]) => {
+  const normalizedRow: Record<string, string> = {};
+  Object.entries(row).forEach(([key, value]) => {
+    normalizedRow[normalizeHeaderKey(key)] = value;
+  });
+  for (const key of keys) {
+    const normalizedKey = normalizeHeaderKey(key);
+    if (normalizedRow[normalizedKey] !== undefined) {
+      return normalizedRow[normalizedKey];
+    }
+  }
+  return '';
+};
+
 const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | null => {
-  const rawTicker = row.ticker?.trim();
-  const price = parseNumberEU(row.price ?? '');
+  const rawTicker = (row.ticker ?? getRowValue(row, ['ticker', 'symbol', 'isin'])).trim();
+  const price = parseNumberEU(getRowValue(row, ['price', 'precio', 'precioactual']));
   if (!rawTicker || !price) return null;
   let ticker = rawTicker.toUpperCase();
   let market: string | null = null;
@@ -161,10 +177,10 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
   } else {
     ticker = normalizeTicker(rawTicker, null);
   }
-  const currency = row.currency?.trim().toUpperCase() || null;
+  const currency = (getRowValue(row, ['currency', 'moneda']) || '').trim().toUpperCase() || null;
   const normalizedPrice = normalizeSheetPrice(price, currency, market);
-  const quantity = parseNumberEU(row.acciones ?? '');
-  const name = row.name?.trim() || null;
+  const quantity = parseNumberEU(getRowValue(row, ['acciones', 'cantidad', 'shares']));
+  const name = (getRowValue(row, ['name', 'nombre', 'descripcion']) || '').trim() || null;
   return {
     ticker,
     market,
