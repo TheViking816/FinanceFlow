@@ -1,0 +1,8 @@
+-- Optional seed data. Run manually if you want default categories.
+-- Replace :user_id with a real auth user id before running.
+--
+-- insert into categories (user_id, name, kind, icon)
+-- values
+--   (':user_id', 'Alimentacion', 'expense', 'restaurant'),
+--   (':user_id', 'Transporte', 'expense', 'directions_car'),
+--   (':user_id', 'Salario', 'income', 'work');
