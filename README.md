@@ -32,6 +32,10 @@ App de finanzas personales en Vite + React + Supabase.
 1. Asegura `base: "/FinanceFlow/"` en `vite.config.ts`.
 2. El workflow `/.github/workflows/pages.yml` construye y publica `dist`.
 3. En GitHub, activa Pages en Settings -> Pages -> Source: GitHub Actions.
+4. Configura los secrets en Settings -> Secrets and variables -> Actions:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_FX_SHEET_URL` (opcional)
 
 ## Crear usuario y empezar
 1. Abre la app en local.
