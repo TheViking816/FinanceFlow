@@ -4,6 +4,7 @@ import type { Holding, SecurityPrice } from '../types';
 
 const normalizeMarket = (market: string | null | undefined) => (market ?? '').trim();
 const buildKey = (ticker: string, market: string | null) => `${ticker}__${normalizeMarket(market) || 'none'}`;
+const SHEET_META_KEY = 'financeflow-sheet-prices-meta';
 const DEFAULT_PRICES_SHEET_URL =
   (import.meta.env.VITE_PRICES_SHEET_URL || '').trim() ||
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ7SVCAW3W1vLdvPqrn5T-eG6A73I-0HWrHdk5dvKwOEGmQXkukQCYzkzBN4tjoUOJS4tcm2-HJSXG/pub?output=csv';
@@ -120,9 +121,27 @@ const loadPricesFromSheet = async () => {
         }
       }
     });
+    window.localStorage.setItem(
+      SHEET_META_KEY,
+      JSON.stringify({
+        updatedAt: new Date().toISOString(),
+        rows: rows.length,
+        source: 'sheet',
+      })
+    );
     return map;
   } catch {
     return new Map<string, SecurityPrice>();
+  }
+};
+
+export const getSheetPricesMeta = () => {
+  try {
+    const raw = window.localStorage.getItem(SHEET_META_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as { updatedAt: string; rows: number; source: string };
+  } catch {
+    return null;
   }
 };
 

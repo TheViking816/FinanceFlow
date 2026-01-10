@@ -16,7 +16,7 @@ import { useToast } from '../components/ToastProvider';
 import { useFxRates } from '../hooks/useFxRates';
 
 const buildSparklinePath = (values: number[], width: number, height: number) => {
-  if (!values.length) return '';
+  if (values.length < 2) return '';
   const max = Math.max(...values);
   const min = Math.min(...values);
   const span = max - min || 1;

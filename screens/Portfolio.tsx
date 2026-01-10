@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listHoldings, createHolding, deleteAllHoldings } from '../data/holdings';
 import { listBrokers, createBroker } from '../data/brokers';
-import { getLatestPrices, getPriceKey } from '../data/prices';
+import { getLatestPrices, getPriceKey, getSheetPricesMeta } from '../data/prices';
 import { getProfile } from '../data/profiles';
 import { useQuery } from '../hooks/useQuery';
 import LoadingState from '../components/LoadingState';
@@ -97,6 +97,10 @@ const Portfolio: React.FC = () => {
     });
     return map;
   }, [filteredHoldings, baseCurrency]);
+  const sheetMeta = getSheetPricesMeta();
+  const sheetTime = sheetMeta?.updatedAt
+    ? new Date(sheetMeta.updatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+    : null;
 
   const handleCreateHolding = async () => {
     if (!form.ticker.trim()) {
@@ -202,6 +206,11 @@ const Portfolio: React.FC = () => {
             <span className="material-symbols-outlined text-slate-500 text-[18px]">timeline</span>
             <span className="text-slate-500 text-sm font-semibold">Actualiza precios desde cada activo</span>
           </div>
+          {sheetTime && (
+            <div className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">
+              Precios desde Sheets · {sheetTime}
+            </div>
+          )}
           {missingFx.length > 0 && (
             <div className="mt-2 text-[10px] uppercase tracking-widest text-amber-500">
               Faltan FX para {missingFx.join(', ')} (usando valor original)
