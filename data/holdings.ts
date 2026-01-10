@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { requireAuth } from '../lib/auth';
+import { getSheetPriceEntries } from './prices';
 import type { Holding } from '../types';
 
 export const listHoldings = async () => {
@@ -13,9 +14,12 @@ export const listHoldings = async () => {
 
 export const getHolding = async (id: string) => {
   await requireAuth();
-  const { data, error } = await supabase.from('holdings').select('*').eq('id', id).single();
+  const { data, error } = await supabase.from('holdings').select('*').eq('id', id).maybeSingle();
   if (error) {
     throw error;
+  }
+  if (!data) {
+    throw new Error('Activo no encontrado.');
   }
   return data as Holding;
 };
@@ -56,4 +60,28 @@ export const deleteAllHoldings = async () => {
   if (error) {
     throw error;
   }
+};
+
+export const syncHoldingsFromSheet = async () => {
+  const user = await requireAuth();
+  const entries = await getSheetPriceEntries();
+  if (!entries.length) return 0;
+  const payload = entries.map((entry) => ({
+    user_id: user.id,
+    broker_id: null,
+    ticker: entry.ticker,
+    name: null,
+    market: entry.market ?? '',
+    currency: entry.currency ?? 'EUR',
+    quantity: 0,
+    avg_price: entry.close_price,
+    fees_total: 0,
+  }));
+  const { error } = await supabase
+    .from('holdings')
+    .upsert(payload, { onConflict: 'user_id,broker_id,ticker,market' });
+  if (error) {
+    throw error;
+  }
+  return payload.length;
 };

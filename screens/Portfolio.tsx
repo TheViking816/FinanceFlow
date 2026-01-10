@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listHoldings, createHolding, deleteAllHoldings } from '../data/holdings';
+import { listHoldings, createHolding, deleteAllHoldings, syncHoldingsFromSheet } from '../data/holdings';
 import { listBrokers, createBroker } from '../data/brokers';
 import { getLatestPrices, getPriceKey, getSheetPricesMeta, syncSheetPricesToSupabase } from '../data/prices';
 import { getProfile } from '../data/profiles';
@@ -29,6 +29,7 @@ const Portfolio: React.FC = () => {
   });
   const [filterBroker, setFilterBroker] = useState('');
   const [filterCurrency, setFilterCurrency] = useState('');
+  const [syncingHoldings, setSyncingHoldings] = useState(false);
 
   const { data, loading, error, refetch } = useQuery(async () => {
     const [profile, brokers, holdings, latestSnapshot] = await Promise.all([
@@ -58,6 +59,27 @@ const Portfolio: React.FC = () => {
     }, 60000);
     return () => window.clearInterval(interval);
   }, [refetch]);
+
+  useEffect(() => {
+    if (!data || data.holdings.length) return;
+    if (syncingHoldings) return;
+    setSyncingHoldings(true);
+    syncHoldingsFromSheet()
+      .then(async (count) => {
+        if (count) {
+          const freshHoldings = await listHoldings();
+          await syncSheetPricesToSupabase(freshHoldings);
+        }
+        refetch();
+        showToast('Holdings importados desde Sheets.', 'success');
+      })
+      .catch((err) => {
+        showToast(err instanceof Error ? err.message : 'No se pudo importar holdings.', 'error');
+      })
+      .finally(() => {
+        setSyncingHoldings(false);
+      });
+  }, [data, syncingHoldings, refetch, showToast]);
 
   const baseCurrency = (data?.profile?.base_currency ?? 'EUR').toUpperCase();
 
@@ -235,6 +257,15 @@ const Portfolio: React.FC = () => {
           >
             Actualizar precios ahora
           </button>
+          {data?.holdings.length === 0 && (
+            <button
+              className="mt-2 h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-primary/20 text-primary"
+              onClick={() => syncHoldingsFromSheet().then(refetch)}
+              disabled={syncingHoldings}
+            >
+              {syncingHoldings ? 'Importando...' : 'Importar holdings desde Sheets'}
+            </button>
+          )}
           {(sheetTime || hasSheetPrices) && (
             <div className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">
               Precios desde Sheets · {sheetTime ?? 'sincronizado'}

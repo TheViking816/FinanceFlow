@@ -138,32 +138,21 @@ const buildSheetPrice = (row: Record<string, string>) => {
   return priceEntry;
 };
 
-const loadPricesFromSheet = async () => {
+export const getSheetPriceEntries = async () => {
   try {
     const url = new URL(normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL));
     url.searchParams.set('_ts', Date.now().toString());
     const response = await fetch(url.toString(), { cache: 'no-store' });
     if (!response.ok) {
-      return new Map<string, SecurityPrice>();
+      return [] as SecurityPrice[];
     }
     const text = await response.text();
     const rows = parseSheetPrices(text);
-    const map = new Map<string, SecurityPrice>();
+    const entries: SecurityPrice[] = [];
     rows.forEach((row) => {
       const price = buildSheetPrice(row);
       if (!price) return;
-      const key = buildKey(price.ticker, price.market);
-      map.set(key, price);
-      if (price.market) {
-        const fallbackKey = buildKey(price.ticker, null);
-        if (!map.has(fallbackKey)) {
-          map.set(fallbackKey, { ...price, market: null });
-        }
-        const prefixedKey = buildKey(`${price.market}:${price.ticker}`, null);
-        if (!map.has(prefixedKey)) {
-          map.set(prefixedKey, { ...price, market: null });
-        }
-      }
+      entries.push(price);
     });
     window.localStorage.setItem(
       SHEET_META_KEY,
@@ -173,10 +162,30 @@ const loadPricesFromSheet = async () => {
         source: 'sheet',
       })
     );
-    return map;
+    return entries;
   } catch {
-    return new Map<string, SecurityPrice>();
+    return [];
   }
+};
+
+const loadPricesFromSheet = async () => {
+  const entries = await getSheetPriceEntries();
+  const map = new Map<string, SecurityPrice>();
+  entries.forEach((price) => {
+    const key = buildKey(price.ticker, price.market);
+    map.set(key, price);
+    if (price.market) {
+      const fallbackKey = buildKey(price.ticker, null);
+      if (!map.has(fallbackKey)) {
+        map.set(fallbackKey, { ...price, market: null });
+      }
+      const prefixedKey = buildKey(`${price.market}:${price.ticker}`, null);
+      if (!map.has(prefixedKey)) {
+        map.set(prefixedKey, { ...price, market: null });
+      }
+    }
+  });
+  return map;
 };
 
 export const getSheetPrices = async () => loadPricesFromSheet();
