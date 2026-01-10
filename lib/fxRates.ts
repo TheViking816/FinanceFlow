@@ -10,7 +10,9 @@ const resolveSheetUrls = (input: string) => {
 
   try {
     const direct = new URL(input);
-    addUrl(direct.toString());
+    if (!direct.hostname.includes('googleusercontent.com')) {
+      addUrl(direct.toString());
+    }
     if (direct.hostname.includes('docs.google.com') && direct.pathname.includes('/spreadsheets/d/e/')) {
       const match = direct.pathname.match(/\/spreadsheets\/d\/e\/([^/]+)/);
       const id = match?.[1];
@@ -22,11 +24,15 @@ const resolveSheetUrls = (input: string) => {
         addUrl(`https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`);
       }
     }
-    if (direct.hostname.includes('docs.google.com') && direct.pathname.includes('/spreadsheets/d/')) {
+    if (
+      direct.hostname.includes('docs.google.com')
+      && direct.pathname.includes('/spreadsheets/d/')
+      && !direct.pathname.includes('/spreadsheets/d/e/')
+    ) {
       const match = direct.pathname.match(/\/spreadsheets\/d\/([^/]+)/);
       const id = match?.[1];
       const gid = direct.searchParams.get('gid') ?? '0';
-      if (id) {
+      if (id && id !== 'e') {
         addUrl(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`);
       }
     }
