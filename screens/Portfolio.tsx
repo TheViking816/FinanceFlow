@@ -58,9 +58,11 @@ const Portfolio: React.FC = () => {
     if (!data) return [];
     return data.holdings.map((holding) => {
       const key = getPriceKey(holding.ticker, holding.market ?? null);
-      const price = data.latestPrices.get(key)?.close_price ?? 0;
+      const priceEntry = data.latestPrices.get(key);
+      const price = priceEntry?.close_price ?? 0;
+      const source = String(priceEntry?.id ?? '').startsWith('sheet-') ? 'sheet' : 'supabase';
       const value = Number(holding.quantity) * Number(price);
-      return { holding, price, value };
+      return { holding, price, value, source };
     });
   }, [data]);
 
@@ -359,7 +361,7 @@ const Portfolio: React.FC = () => {
           {filteredHoldings.length ? (
             filteredHoldings
               .sort((a, b) => b.value - a.value)
-              .map(({ holding, price, value }) => (
+              .map(({ holding, price, value, source }) => (
                 <div
                   key={holding.id}
                   onClick={() => navigate(`/asset/${holding.id}`)}
@@ -378,7 +380,7 @@ const Portfolio: React.FC = () => {
                         {formatNumber(Number(holding.quantity))} · {formatCurrency(Number(price), holding.currency)}
                       </p>
                       <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                        Precio actual
+                        {source === 'sheet' ? 'Sheets' : 'Guardado'}
                       </span>
                     </div>
                   </div>

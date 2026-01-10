@@ -104,7 +104,9 @@ const buildSheetPrice = (row: Record<string, string>) => {
 
 const loadPricesFromSheet = async () => {
   try {
-    const response = await fetch(normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL));
+    const url = new URL(normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL));
+    url.searchParams.set('_ts', Date.now().toString());
+    const response = await fetch(url.toString(), { cache: 'no-store' });
     if (!response.ok) {
       return new Map<string, SecurityPrice>();
     }
