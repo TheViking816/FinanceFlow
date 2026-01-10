@@ -93,11 +93,17 @@ export const syncHoldingsFromSheet = async () => {
     avg_price: entry.price,
     fees_total: 0,
   }));
-  const { error } = await supabase
+  const { error: deleteError } = await supabase
     .from('holdings')
-    .upsert(payload, { onConflict: 'user_id,broker_id,ticker,market' });
-  if (error) {
-    throw error;
+    .delete()
+    .eq('user_id', user.id)
+    .is('broker_id', null);
+  if (deleteError) {
+    throw deleteError;
+  }
+  const { error: insertError } = await supabase.from('holdings').insert(payload);
+  if (insertError) {
+    throw insertError;
   }
   return payload.length;
 };
