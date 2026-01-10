@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listHoldings, createHolding, deleteAllHoldings } from '../data/holdings';
 import { listBrokers, createBroker } from '../data/brokers';
@@ -40,6 +40,13 @@ const Portfolio: React.FC = () => {
     const latestPrices = await getLatestPrices(holdings);
     return { profile, brokers, holdings, latestPrices, latestSnapshot };
   }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      refetch();
+    }, 60000);
+    return () => window.clearInterval(interval);
+  }, [refetch]);
 
   const baseCurrency = (data?.profile?.base_currency ?? 'EUR').toUpperCase();
 
@@ -101,6 +108,9 @@ const Portfolio: React.FC = () => {
   const sheetTime = sheetMeta?.updatedAt
     ? new Date(sheetMeta.updatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
     : null;
+  const hasSheetPrices = data?.latestPrices
+    ? Array.from(data.latestPrices.values()).some((price) => String(price.id).startsWith('sheet-'))
+    : false;
 
   const handleCreateHolding = async () => {
     if (!form.ticker.trim()) {
@@ -206,9 +216,9 @@ const Portfolio: React.FC = () => {
             <span className="material-symbols-outlined text-slate-500 text-[18px]">timeline</span>
             <span className="text-slate-500 text-sm font-semibold">Actualiza precios desde cada activo</span>
           </div>
-          {sheetTime && (
+          {(sheetTime || hasSheetPrices) && (
             <div className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">
-              Precios desde Sheets · {sheetTime}
+              Precios desde Sheets · {sheetTime ?? 'sincronizado'}
             </div>
           )}
           {missingFx.length > 0 && (
@@ -357,6 +367,9 @@ const Portfolio: React.FC = () => {
                       <p className="text-slate-500 text-sm">
                         {formatNumber(Number(holding.quantity))} · {formatCurrency(Number(price), holding.currency)}
                       </p>
+                      <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                        Precio actual
+                      </span>
                     </div>
                   </div>
                 </div>

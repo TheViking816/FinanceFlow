@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getHolding, updateHolding } from '../data/holdings';
-import { insertPrice, listPricesForHolding } from '../data/prices';
+import { getPriceKey, getSheetPrices, insertPrice, listPricesForHolding } from '../data/prices';
 import { useQuery } from '../hooks/useQuery';
 import { formatCurrency, formatDate, formatNumber } from '../lib/format';
 import LoadingState from '../components/LoadingState';
@@ -9,7 +9,7 @@ import EmptyState from '../components/EmptyState';
 import { useToast } from '../components/ToastProvider';
 
 const buildLinePath = (values: number[], width: number, height: number) => {
-  if (!values.length) return '';
+  if (values.length < 2) return '';
   const max = Math.max(...values);
   const min = Math.min(...values);
   const span = max - min || 1;
@@ -38,11 +38,21 @@ const AssetDetail: React.FC = () => {
     if (!id) throw new Error('Activo no encontrado.');
     const holding = await getHolding(id);
     const prices = await listPricesForHolding(holding.ticker, holding.market ?? null);
-    return { holding, prices };
+    const sheetPrices = await getSheetPrices();
+    return { holding, prices, sheetPrices };
   }, [id]);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      refetch();
+    }, 60000);
+    return () => window.clearInterval(interval);
+  }, [refetch]);
+
   const latestPrice = data?.prices[data.prices.length - 1];
-  const currentValue = latestPrice ? Number(latestPrice.close_price) * Number(data?.holding.quantity ?? 0) : 0;
+  const sheetPrice = data?.sheetPrices?.get(getPriceKey(data?.holding.ticker ?? '', data?.holding.market ?? null));
+  const livePrice = sheetPrice ?? latestPrice;
+  const currentValue = livePrice ? Number(livePrice.close_price) * Number(data?.holding.quantity ?? 0) : 0;
 
   const chartPath = useMemo(() => {
     if (!data?.prices.length) return '';
@@ -127,13 +137,15 @@ const AssetDetail: React.FC = () => {
           <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
             <span className="material-symbols-outlined text-slate-500 text-[18px]">timeline</span>
             <p className="text-slate-600 dark:text-slate-300 text-sm font-bold">
-              {latestPrice ? `Ultimo precio ${formatDate(latestPrice.price_date)}` : 'Sin precios cargados'}
+              {livePrice
+                ? `${sheetPrice ? 'Precio Sheets' : 'Ultimo precio'} ${formatDate(livePrice.price_date)}`
+                : 'Sin precios cargados'}
             </p>
           </div>
         </div>
 
         <div className="w-full h-56 mt-6 mb-4 px-2">
-          {data.prices.length ? (
+          {chartPath ? (
             <svg className="w-full h-full" fill="none" preserveAspectRatio="none" viewBox="0 0 375 220">
               <path d={chartPath} stroke="#0d6cf2" strokeWidth="4" strokeLinecap="round" />
             </svg>
@@ -154,6 +166,14 @@ const AssetDetail: React.FC = () => {
               <span className="material-symbols-outlined text-sm">trending_up</span> Precio medio
             </p>
             <p className="text-xl font-extrabold tracking-tight">{formatCurrency(Number(holding.avg_price), holding.currency)}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm col-span-2">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">query_stats</span> Precio actual
+            </p>
+            <p className="text-2xl font-extrabold tracking-tight">
+              {livePrice ? formatCurrency(Number(livePrice.close_price), holding.currency) : '--'}
+            </p>
           </div>
         </div>
 

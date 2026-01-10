@@ -135,6 +135,8 @@ const loadPricesFromSheet = async () => {
   }
 };
 
+export const getSheetPrices = async () => loadPricesFromSheet();
+
 export const getSheetPricesMeta = () => {
   try {
     const raw = window.localStorage.getItem(SHEET_META_KEY);
