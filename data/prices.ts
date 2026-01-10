@@ -2,10 +2,29 @@ import { supabase } from '../lib/supabaseClient';
 import { parseNumberEU } from '../lib/importers';
 import type { Holding, SecurityPrice } from '../types';
 
-const normalizeMarket = (market: string | null | undefined) => (market ?? '').trim().toUpperCase();
-const normalizeTicker = (ticker: string) => ticker.trim().toUpperCase();
+const MARKET_ALIASES: Record<string, string> = {
+  SEHK: 'HKG',
+  HKEX: 'HKG',
+  LSE: 'LON',
+  LON: 'LON',
+};
+
+const normalizeMarket = (market: string | null | undefined) => {
+  const raw = (market ?? '').trim().toUpperCase();
+  return MARKET_ALIASES[raw] ?? raw;
+};
+
+const normalizeTicker = (ticker: string, market: string | null) => {
+  const normalized = ticker.trim().toUpperCase();
+  const marketCode = normalizeMarket(market);
+  if (marketCode === 'HKG' && /^\d+$/.test(normalized)) {
+    return normalized.padStart(4, '0');
+  }
+  return normalized;
+};
+
 const buildKey = (ticker: string, market: string | null) =>
-  `${normalizeTicker(ticker)}__${normalizeMarket(market) || 'none'}`;
+  `${normalizeTicker(ticker, market)}__${normalizeMarket(market) || 'none'}`;
 const SHEET_META_KEY = 'financeflow-sheet-prices-meta';
 const DEFAULT_PRICES_SHEET_URL =
   (import.meta.env.VITE_PRICES_SHEET_URL || '').trim() ||
@@ -85,8 +104,10 @@ const buildSheetPrice = (row: Record<string, string>) => {
   let market: string | null = null;
   if (rawTicker.includes(':')) {
     const [marketPart, tickerPart] = rawTicker.split(':');
-    market = marketPart?.trim().toUpperCase() || null;
-    ticker = tickerPart?.trim().toUpperCase() || rawTicker.toUpperCase();
+    market = normalizeMarket(marketPart);
+    ticker = normalizeTicker(tickerPart ?? rawTicker, market);
+  } else {
+    ticker = normalizeTicker(rawTicker, null);
   }
   const currency = row.currency?.trim().toUpperCase() || null;
   const today = new Date().toISOString().slice(0, 10);
