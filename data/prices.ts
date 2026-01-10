@@ -176,6 +176,51 @@ export const getSheetPricesMeta = () => {
   }
 };
 
+const chunk = <T,>(items: T[], size: number) => {
+  const result: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    result.push(items.slice(i, i + size));
+  }
+  return result;
+};
+
+export const syncSheetPricesToSupabase = async (holdings: Holding[]) => {
+  if (!holdings.length) return 0;
+  const sheetPrices = await loadPricesFromSheet();
+  if (!sheetPrices.size) return 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const payload = holdings
+    .map((holding) => {
+      const key = buildKey(holding.ticker, holding.market ?? null);
+      const price = sheetPrices.get(key);
+      if (!price) return null;
+      return {
+        ticker: price.ticker,
+        market: price.market ?? '',
+        currency: price.currency ?? holding.currency,
+        price_date: today,
+        close_price: price.close_price,
+      };
+    })
+    .filter(Boolean) as Array<{
+    ticker: string;
+    market: string;
+    currency: string;
+    price_date: string;
+    close_price: number;
+  }>;
+
+  if (!payload.length) return 0;
+
+  for (const batch of chunk(payload, 200)) {
+    const { error } = await supabase
+      .from('security_prices')
+      .upsert(batch, { onConflict: 'ticker,market,price_date' });
+    if (error) throw error;
+  }
+  return payload.length;
+};
+
 export const listPricesForHolding = async (ticker: string, market: string | null) => {
   const normalized = normalizeMarket(market);
   let query = supabase.from('security_prices').select('*').eq('ticker', ticker);

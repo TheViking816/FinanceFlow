@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listHoldings, createHolding, deleteAllHoldings } from '../data/holdings';
 import { listBrokers, createBroker } from '../data/brokers';
-import { getLatestPrices, getPriceKey, getSheetPricesMeta } from '../data/prices';
+import { getLatestPrices, getPriceKey, getSheetPricesMeta, syncSheetPricesToSupabase } from '../data/prices';
 import { getProfile } from '../data/profiles';
 import { useQuery } from '../hooks/useQuery';
 import LoadingState from '../components/LoadingState';
@@ -41,8 +41,15 @@ const Portfolio: React.FC = () => {
     return { profile, brokers, holdings, latestPrices, latestSnapshot };
   }, []);
 
-  const handleRefreshPrices = () => {
-    refetch();
+  const handleRefreshPrices = async () => {
+    if (!data) return;
+    try {
+      const updated = await syncSheetPricesToSupabase(data.holdings);
+      refetch();
+      showToast(updated ? `Precios sincronizados: ${updated}` : 'Sin cambios en precios.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'No se pudo sincronizar precios.', 'error');
+    }
   };
 
   useEffect(() => {
@@ -231,6 +238,11 @@ const Portfolio: React.FC = () => {
           {(sheetTime || hasSheetPrices) && (
             <div className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">
               Precios desde Sheets · {sheetTime ?? 'sincronizado'}
+            </div>
+          )}
+          {Object.keys(totalsByCurrency).some((currency) => currency !== baseCurrency) && (
+            <div className="mt-1 text-[10px] uppercase tracking-widest text-slate-400">
+              FX activo desde Google Sheets
             </div>
           )}
           {missingFx.length > 0 && (
