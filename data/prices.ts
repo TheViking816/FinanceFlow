@@ -160,13 +160,48 @@ const splitCsvLine = (line: string, delimiter: string) => {
   return result;
 };
 
+const normalizePartsToHeaders = (parts: string[], headers: string[], delimiter: string) => {
+  if (parts.length <= headers.length) return parts;
+  const numericHeaders = new Set([
+    'price',
+    'change',
+    'change_percent',
+    'fx_to_base',
+    'fx',
+    'fx_to_eur',
+    'low52w',
+    'high52w',
+    'yield_pct',
+    'payout_pct',
+    'annual_dividend',
+    'acciones',
+    'quantity',
+  ]);
+  const looksLikeSplitDecimal = (left: string, right: string) =>
+    /^-?\d+$/.test(left) && /^\d{1,4}$/.test(right);
+  const normalized = [...parts];
+  for (let i = 0; i < normalized.length - 1 && normalized.length > headers.length; i += 1) {
+    const header = headers[i];
+    if (!numericHeaders.has(header)) continue;
+    const left = (normalized[i] ?? '').trim();
+    const right = (normalized[i + 1] ?? '').trim();
+    if (!left || !right) continue;
+    if (!looksLikeSplitDecimal(left, right)) continue;
+    normalized[i] = `${left}${delimiter}${right}`;
+    normalized.splice(i + 1, 1);
+    i = Math.max(-1, i - 1);
+  }
+  return normalized;
+};
+
 const parseSheetPrices = (text: string) => {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (!lines.length) return [];
   const delimiter = detectDelimiter(lines[0]);
   const headers = splitCsvLine(lines[0], delimiter).map((header) => header.trim().toLowerCase());
   return lines.slice(1).map((line) => {
-    const values = splitCsvLine(line, delimiter);
+    const rawValues = splitCsvLine(line, delimiter);
+    const values = normalizePartsToHeaders(rawValues, headers, delimiter);
     const record: Record<string, string> = {};
     headers.forEach((header, index) => {
       record[header] = values[index]?.trim() ?? '';

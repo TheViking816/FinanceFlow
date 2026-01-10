@@ -100,6 +100,40 @@ const splitLine = (line: string, delimiter: string) => {
   return result;
 };
 
+const normalizePartsToHeaders = (parts: string[], headers: string[], delimiter: string) => {
+  if (parts.length <= headers.length) return parts;
+  const numericHeaders = new Set([
+    'price',
+    'change',
+    'change_percent',
+    'fx_to_base',
+    'fx',
+    'fx_to_eur',
+    'low52w',
+    'high52w',
+    'yield_pct',
+    'payout_pct',
+    'annual_dividend',
+    'acciones',
+    'quantity',
+  ]);
+  const looksLikeSplitDecimal = (left: string, right: string) =>
+    /^-?\d+$/.test(left) && /^\d{1,4}$/.test(right);
+  const normalized = [...parts];
+  for (let i = 0; i < normalized.length - 1 && normalized.length > headers.length; i += 1) {
+    const header = headers[i];
+    if (!numericHeaders.has(header)) continue;
+    const left = (normalized[i] ?? '').trim();
+    const right = (normalized[i + 1] ?? '').trim();
+    if (!left || !right) continue;
+    if (!looksLikeSplitDecimal(left, right)) continue;
+    normalized[i] = `${left}${delimiter}${right}`;
+    normalized.splice(i + 1, 1);
+    i = Math.max(-1, i - 1);
+  }
+  return normalized;
+};
+
 export const loadFxRatesFromSheet = async (sheetUrl: string, baseCurrency: string) => {
   const text = await fetchSheetText(sheetUrl);
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -115,7 +149,8 @@ export const loadFxRatesFromSheet = async (sheetUrl: string, baseCurrency: strin
 
   if (currencyIndex >= 0 && fxIndex >= 0) {
     lines.slice(1).forEach((line) => {
-      const parts = splitLine(line, delimiter);
+      const rawParts = splitLine(line, delimiter);
+      const parts = normalizePartsToHeaders(rawParts, headers, delimiter);
       const currency = (parts[currencyIndex] ?? '').trim().toUpperCase();
       const fxValue = (parts[fxIndex] ?? '').toString();
       if (!currency || !fxValue) return;
