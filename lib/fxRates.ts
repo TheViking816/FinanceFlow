@@ -5,11 +5,26 @@ const STORAGE_KEY = 'financeflow-fx-rates';
 const normalizeSheetUrl = (input: string) => {
   try {
     const url = new URL(input);
+    if (url.hostname.includes('googleusercontent.com') && url.pathname.includes('e@')) {
+      const match = url.pathname.match(/e@([^/]+)/);
+      const id = match?.[1];
+      const gid = url.searchParams.get('gid');
+      if (id) {
+        const params = new URLSearchParams();
+        params.set('output', 'csv');
+        if (gid) params.set('gid', gid);
+        return `https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`;
+      }
+    }
     if (url.hostname.includes('docs.google.com') && url.pathname.includes('/spreadsheets/d/e/')) {
       const match = url.pathname.match(/\/spreadsheets\/d\/e\/([^/]+)/);
       const id = match?.[1];
       if (id) {
-        return `https://docs.google.com/spreadsheets/d/e/${id}/pub?output=csv`;
+        const gid = url.searchParams.get('gid');
+        const params = new URLSearchParams();
+        params.set('output', 'csv');
+        if (gid) params.set('gid', gid);
+        return `https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`;
       }
     }
     if (url.hostname.includes('docs.google.com') && url.pathname.includes('/spreadsheets/d/')) {
