@@ -33,6 +33,7 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const [activeSegment, setActiveSegment] = useState<string | null>(null);
 
   const { data, loading, error, refetch } = useQuery(async () => {
     const [profile, accounts, categories, transactions, holdings, snapshots, latestSnapshot] = await Promise.all([
@@ -124,6 +125,9 @@ const Dashboard: React.FC = () => {
     });
     return { segments, total };
   }, [breakdown]);
+  const activeDistribution = activeSegment
+    ? breakdownEntries.segments.find((segment) => segment.label === activeSegment)
+    : null;
 
   const recentTransactions = useMemo(() => {
     if (!data) return [];
@@ -202,10 +206,13 @@ const Dashboard: React.FC = () => {
         <section className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700/50">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold">Distribucion</h3>
-              <p className="text-xs text-slate-500">Cuentas y cartera</p>
+              <h3 className="text-lg font-extrabold">Distribucion</h3>
+              <p className="text-sm text-slate-500">Cuentas y cartera</p>
             </div>
-            <div className="w-20 h-20">
+            <div
+              className="relative w-28 h-28 sm:w-32 sm:h-32"
+              onMouseLeave={() => setActiveSegment(null)}
+            >
               <svg viewBox="0 0 36 36" className="w-full h-full">
                 <circle cx="18" cy="18" r="15.915" fill="none" stroke="#e2e8f0" strokeWidth="3"></circle>
                 {breakdownEntries.segments.map((segment) => (
@@ -219,18 +226,37 @@ const Dashboard: React.FC = () => {
                     strokeWidth="3"
                     strokeDasharray={`${segment.pct * 100} ${100 - segment.pct * 100}`}
                     strokeDashoffset={`${25 - segment.offset * 100}`}
+                    onMouseEnter={() => setActiveSegment(segment.label)}
+                    onClick={() => setActiveSegment(segment.label)}
+                    onTouchStart={() => setActiveSegment(segment.label)}
                   ></circle>
                 ))}
               </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-[10px] uppercase tracking-widest text-slate-400">%</span>
+                <span className="text-lg font-extrabold">
+                  {activeDistribution ? Math.round(activeDistribution.pct * 100) : 100}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {activeDistribution ? activeDistribution.label : 'Total'}
+                </span>
+              </div>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 text-xs font-semibold text-slate-500">
+          <div className="mt-4 grid grid-cols-2 gap-3 text-sm font-semibold text-slate-600">
             {breakdownEntries.segments.map((segment) => (
-              <div key={segment.label} className="flex items-center gap-2">
+              <button
+                key={segment.label}
+                className="flex items-center gap-2 text-left"
+                onMouseEnter={() => setActiveSegment(segment.label)}
+                onClick={() => setActiveSegment(segment.label)}
+                onTouchStart={() => setActiveSegment(segment.label)}
+                type="button"
+              >
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: segment.color }}></span>
                 <span>{segment.label}</span>
                 <span className="text-slate-400 ml-auto">{formatCurrency(segment.value, baseCurrency)}</span>
-              </div>
+              </button>
             ))}
           </div>
         </section>
