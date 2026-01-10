@@ -21,6 +21,7 @@ const Onboarding: React.FC = () => {
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [profileForm, setProfileForm] = useState({ display_name: '', base_currency: 'EUR' });
+  const redirectTo = `${window.location.origin}/FinanceFlow/`;
 
   useEffect(() => {
     if (!session) {
@@ -71,13 +72,16 @@ const Onboarding: React.FC = () => {
         const { error } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
+          options: {
+            emailRedirectTo: redirectTo,
+          },
         });
         if (error) throw error;
       } else {
         const { error } = await supabase.auth.signInWithOtp({
           email: form.email,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: redirectTo,
           },
         });
         if (error) throw error;
