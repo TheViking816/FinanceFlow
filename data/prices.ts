@@ -7,6 +7,13 @@ const MARKET_ALIASES: Record<string, string> = {
   HKEX: 'HKG',
   LSE: 'LON',
   LON: 'LON',
+  BME: 'BME',
+  EPA: 'EPA',
+  AMS: 'AMS',
+  NASDAQ: 'NASDAQ',
+  NYSE: 'NYSE',
+  NYSEARCA: 'NYSEARCA',
+  HKG: 'HKG',
 };
 
 const normalizeMarket = (market: string | null | undefined) => {
@@ -96,6 +103,13 @@ const parseSheetPrices = (text: string) => {
   });
 };
 
+const normalizeSheetPrice = (price: number, currency: string | null, market: string | null) => {
+  if (currency === 'GBP' && normalizeMarket(market) === 'LON' && price > 100) {
+    return price / 100;
+  }
+  return price;
+};
+
 const buildSheetPrice = (row: Record<string, string>) => {
   const rawTicker = row.ticker?.trim();
   const price = parseNumberEU(row.price ?? '');
@@ -110,6 +124,7 @@ const buildSheetPrice = (row: Record<string, string>) => {
     ticker = normalizeTicker(rawTicker, null);
   }
   const currency = row.currency?.trim().toUpperCase() || null;
+  const normalizedPrice = normalizeSheetPrice(price, currency, market);
   const today = new Date().toISOString().slice(0, 10);
   const priceEntry: SecurityPrice = {
     id: `sheet-${ticker}-${market ?? 'none'}`,
@@ -117,7 +132,7 @@ const buildSheetPrice = (row: Record<string, string>) => {
     market,
     currency,
     price_date: today,
-    close_price: price,
+    close_price: normalizedPrice,
     created_at: today,
   };
   return priceEntry;
@@ -195,8 +210,8 @@ export const syncSheetPricesToSupabase = async (holdings: Holding[]) => {
       const price = sheetPrices.get(key);
       if (!price) return null;
       return {
-        ticker: price.ticker,
-        market: price.market ?? '',
+        ticker: normalizeTicker(holding.ticker, holding.market ?? null),
+        market: normalizeMarket(holding.market ?? ''),
         currency: price.currency ?? holding.currency,
         price_date: today,
         close_price: price.close_price,
