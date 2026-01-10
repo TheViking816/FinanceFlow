@@ -211,9 +211,7 @@ export const getSheetPriceEntries = async () => {
   try {
     const normalizedUrl = normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL);
     const url = new URL(normalizedUrl);
-    if (url.hostname.includes('docs.google.com')) {
-      url.searchParams.set('_ts', Date.now().toString());
-    }
+    url.searchParams.delete('_ts');
     const response = await fetch(url.toString(), { cache: 'no-store' });
     if (!response.ok) {
       return [] as SecurityPrice[];
@@ -244,9 +242,7 @@ export const getSheetHoldings = async () => {
   try {
     const normalizedUrl = normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL);
     const url = new URL(normalizedUrl);
-    if (url.hostname.includes('docs.google.com')) {
-      url.searchParams.set('_ts', Date.now().toString());
-    }
+    url.searchParams.delete('_ts');
     const response = await fetch(url.toString(), { cache: 'no-store' });
     if (!response.ok) {
       return [] as SheetHoldingEntry[];
