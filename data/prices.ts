@@ -33,9 +33,10 @@ const normalizeTicker = (ticker: string, market: string | null) => {
 const buildKey = (ticker: string, market: string | null) =>
   `${normalizeTicker(ticker, market)}__${normalizeMarket(market) || 'none'}`;
 const SHEET_META_KEY = 'financeflow-sheet-prices-meta';
+const UPSERT_DEBUG_KEY = 'financeflow-sheet-upsert-debug';
 const DEFAULT_PRICES_SHEET_URL =
   (import.meta.env.VITE_PRICES_SHEET_URL || '').trim() ||
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ7SVCAW3W1vLdvPqrn5T-eG6A73I-0HWrHdk5dvKwOEGmQXkukQCYzkzBN4tjoUOJS4tcm2-HJSXG/pub?output=csv';
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ7SVCAW3W1vLdvPqrn5T-eG6A73I-0HWrHdk5dvKwOEGmQXkukQCYzkzBN4tjoUOJS4tcm2-HJSXG/pub?gid=1414892855&single=true&output=csv';
 
 const resolveSheetUrls = (input: string) => {
   const urls = new Set<string>();
@@ -365,13 +366,45 @@ export const syncSheetPricesToSupabase = async (holdings: Holding[]) => {
 
   if (!payload.length) return 0;
 
-  for (const batch of chunk(payload, 200)) {
+  for (const batch of chunk(payload, 50)) {
     const { error } = await supabase
       .from('security_prices')
       .upsert(batch, { onConflict: 'ticker,market,price_date' });
-    if (error) throw error;
+    if (error) {
+      window.localStorage.setItem(
+        UPSERT_DEBUG_KEY,
+        JSON.stringify({
+          at: new Date().toISOString(),
+          message: error.message,
+          details: (error as { details?: string }).details ?? null,
+          hint: (error as { hint?: string }).hint ?? null,
+          sample: batch[0],
+        })
+      );
+      throw error;
+    }
   }
+  window.localStorage.setItem(
+    UPSERT_DEBUG_KEY,
+    JSON.stringify({ at: new Date().toISOString(), message: null, sample: payload[0] })
+  );
   return payload.length;
+};
+
+export const getSheetUpsertDebug = () => {
+  try {
+    const raw = window.localStorage.getItem(UPSERT_DEBUG_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as {
+      at: string;
+      message: string | null;
+      details?: string | null;
+      hint?: string | null;
+      sample?: Record<string, unknown>;
+    };
+  } catch {
+    return null;
+  }
 };
 
 export const listPricesForHolding = async (ticker: string, market: string | null) => {

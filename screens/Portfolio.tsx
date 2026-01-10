@@ -2,7 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listHoldings, createHolding, deleteAllHoldings, syncHoldingsFromSheet } from '../data/holdings';
 import { listBrokers, createBroker } from '../data/brokers';
-import { getLatestPrices, getPriceKey, getSheetFetchDebug, getSheetPricesMeta, syncSheetPricesToSupabase } from '../data/prices';
+import {
+  getLatestPrices,
+  getPriceKey,
+  getSheetFetchDebug,
+  getSheetPricesMeta,
+  getSheetUpsertDebug,
+  syncSheetPricesToSupabase,
+} from '../data/prices';
 import { getProfile } from '../data/profiles';
 import { useQuery } from '../hooks/useQuery';
 import LoadingState from '../components/LoadingState';
@@ -141,6 +148,7 @@ const Portfolio: React.FC = () => {
   }, [filteredHoldings, baseCurrency]);
   const sheetMeta = getSheetPricesMeta();
   const sheetDebug = getSheetFetchDebug();
+  const sheetUpsertDebug = getSheetUpsertDebug();
   const sheetTime = sheetMeta?.updatedAt
     ? new Date(sheetMeta.updatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
     : null;
@@ -286,6 +294,15 @@ const Portfolio: React.FC = () => {
                   {attempt.status ? `${attempt.status}` : 'error'} · {attempt.url}
                 </div>
               ))}
+            </div>
+          )}
+          {sheetUpsertDebug && (
+            <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[10px] text-rose-600">
+              <div>Upsert debug: {sheetUpsertDebug.at}</div>
+              <div>Error: {sheetUpsertDebug.message ?? 'none'}</div>
+              {sheetUpsertDebug.details && <div>Details: {sheetUpsertDebug.details}</div>}
+              {sheetUpsertDebug.hint && <div>Hint: {sheetUpsertDebug.hint}</div>}
+              {sheetUpsertDebug.sample && <div>Sample: {JSON.stringify(sheetUpsertDebug.sample)}</div>}
             </div>
           )}
           {missingFx.length > 0 && (
