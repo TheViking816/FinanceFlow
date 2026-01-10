@@ -45,6 +45,9 @@ export default defineConfig(({ mode }) => {
           },
           workbox: {
             globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,ico}'],
+            cleanupOutdatedCaches: true,
+            clientsClaim: true,
+            skipWaiting: true,
           },
         }),
       ],
