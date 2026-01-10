@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { requireAuth } from '../lib/auth';
-import { getSheetPriceEntries } from './prices';
+import { getSheetHoldings } from './prices';
 import type { Holding } from '../types';
 
 export const listHoldings = async () => {
@@ -64,17 +64,17 @@ export const deleteAllHoldings = async () => {
 
 export const syncHoldingsFromSheet = async () => {
   const user = await requireAuth();
-  const entries = await getSheetPriceEntries();
+  const entries = await getSheetHoldings();
   if (!entries.length) return 0;
   const payload = entries.map((entry) => ({
     user_id: user.id,
     broker_id: null,
     ticker: entry.ticker,
-    name: null,
+    name: entry.name ?? null,
     market: entry.market ?? '',
     currency: entry.currency ?? 'EUR',
-    quantity: 0,
-    avg_price: entry.close_price,
+    quantity: entry.quantity,
+    avg_price: entry.price,
     fees_total: 0,
   }));
   const { error } = await supabase

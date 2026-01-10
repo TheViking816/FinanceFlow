@@ -138,6 +138,44 @@ const buildSheetPrice = (row: Record<string, string>) => {
   return priceEntry;
 };
 
+export type SheetHoldingEntry = {
+  ticker: string;
+  market: string | null;
+  currency: string | null;
+  price: number;
+  quantity: number;
+  name: string | null;
+  priceDate: string;
+};
+
+const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | null => {
+  const rawTicker = row.ticker?.trim();
+  const price = parseNumberEU(row.price ?? '');
+  if (!rawTicker || !price) return null;
+  let ticker = rawTicker.toUpperCase();
+  let market: string | null = null;
+  if (rawTicker.includes(':')) {
+    const [marketPart, tickerPart] = rawTicker.split(':');
+    market = normalizeMarket(marketPart);
+    ticker = normalizeTicker(tickerPart ?? rawTicker, market);
+  } else {
+    ticker = normalizeTicker(rawTicker, null);
+  }
+  const currency = row.currency?.trim().toUpperCase() || null;
+  const normalizedPrice = normalizeSheetPrice(price, currency, market);
+  const quantity = parseNumberEU(row.acciones ?? '');
+  const name = row.name?.trim() || null;
+  return {
+    ticker,
+    market,
+    currency,
+    price: normalizedPrice,
+    quantity,
+    name,
+    priceDate: new Date().toISOString().slice(0, 10),
+  };
+};
+
 export const getSheetPriceEntries = async () => {
   try {
     const url = new URL(normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL));
@@ -163,6 +201,22 @@ export const getSheetPriceEntries = async () => {
       })
     );
     return entries;
+  } catch {
+    return [];
+  }
+};
+
+export const getSheetHoldings = async () => {
+  try {
+    const url = new URL(normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL));
+    url.searchParams.set('_ts', Date.now().toString());
+    const response = await fetch(url.toString(), { cache: 'no-store' });
+    if (!response.ok) {
+      return [] as SheetHoldingEntry[];
+    }
+    const text = await response.text();
+    const rows = parseSheetPrices(text);
+    return rows.map(buildSheetHolding).filter(Boolean) as SheetHoldingEntry[];
   } catch {
     return [];
   }
