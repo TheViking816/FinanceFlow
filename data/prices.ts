@@ -37,43 +37,69 @@ const DEFAULT_PRICES_SHEET_URL =
   (import.meta.env.VITE_PRICES_SHEET_URL || '').trim() ||
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ7SVCAW3W1vLdvPqrn5T-eG6A73I-0HWrHdk5dvKwOEGmQXkukQCYzkzBN4tjoUOJS4tcm2-HJSXG/pub?output=csv';
 
-const normalizeSheetUrl = (input: string) => {
+const resolveSheetUrls = (input: string) => {
+  const urls = new Set<string>();
+  const addUrl = (url: string | null) => {
+    if (url) urls.add(url);
+  };
+
   try {
-    const url = new URL(input);
-    if (url.hostname.includes('googleusercontent.com') && url.pathname.includes('e@')) {
-      const match = url.pathname.match(/e@([^/]+)/);
+    const direct = new URL(input);
+    addUrl(direct.toString());
+    if (direct.hostname.includes('docs.google.com') && direct.pathname.includes('/spreadsheets/d/e/')) {
+      const match = direct.pathname.match(/\/spreadsheets\/d\/e\/([^/]+)/);
       const id = match?.[1];
-      const gid = url.searchParams.get('gid');
+      const gid = direct.searchParams.get('gid');
       if (id) {
         const params = new URLSearchParams();
         params.set('output', 'csv');
         if (gid) params.set('gid', gid);
-        return `https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`;
+        addUrl(`https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`);
       }
     }
-    if (url.hostname.includes('docs.google.com') && url.pathname.includes('/spreadsheets/d/e/')) {
-      const match = url.pathname.match(/\/spreadsheets\/d\/e\/([^/]+)/);
+    if (direct.hostname.includes('docs.google.com') && direct.pathname.includes('/spreadsheets/d/')) {
+      const match = direct.pathname.match(/\/spreadsheets\/d\/([^/]+)/);
       const id = match?.[1];
-      const gid = url.searchParams.get('gid');
+      const gid = direct.searchParams.get('gid') ?? '0';
+      if (id) {
+        addUrl(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`);
+      }
+    }
+    if (direct.hostname.includes('googleusercontent.com') && direct.pathname.includes('e@')) {
+      const match = direct.pathname.match(/e@([^/]+)/);
+      const id = match?.[1];
+      const gid = direct.searchParams.get('gid');
       if (id) {
         const params = new URLSearchParams();
         params.set('output', 'csv');
         if (gid) params.set('gid', gid);
-        return `https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`;
-      }
-    }
-    if (url.hostname.includes('docs.google.com') && url.pathname.includes('/spreadsheets/d/')) {
-      const match = url.pathname.match(/\/spreadsheets\/d\/([^/]+)/);
-      const id = match?.[1];
-      const gid = url.searchParams.get('gid') ?? '0';
-      if (id) {
-        return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+        addUrl(`https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`);
       }
     }
   } catch {
-    return input;
+    const match = input.match(/e@([^/\\s?]+)/);
+    const id = match?.[1];
+    if (id) {
+      addUrl(`https://docs.google.com/spreadsheets/d/e/${id}/pub?output=csv`);
+    }
   }
-  return input;
+
+  return Array.from(urls);
+};
+
+const fetchSheetText = async (input: string) => {
+  const candidates = resolveSheetUrls(input);
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate, { cache: 'no-store' });
+      if (response.ok) {
+        return response.text();
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+  throw new Error('No se pudo cargar el CSV publicado.');
 };
 
 const detectDelimiter = (line: string) => {
@@ -209,14 +235,7 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
 
 export const getSheetPriceEntries = async () => {
   try {
-    const normalizedUrl = normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL);
-    const url = new URL(normalizedUrl);
-    url.searchParams.delete('_ts');
-    const response = await fetch(url.toString(), { cache: 'no-store' });
-    if (!response.ok) {
-      return [] as SecurityPrice[];
-    }
-    const text = await response.text();
+    const text = await fetchSheetText(DEFAULT_PRICES_SHEET_URL);
     const rows = parseSheetPrices(text);
     const entries: SecurityPrice[] = [];
     rows.forEach((row) => {
@@ -240,14 +259,7 @@ export const getSheetPriceEntries = async () => {
 
 export const getSheetHoldings = async () => {
   try {
-    const normalizedUrl = normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL);
-    const url = new URL(normalizedUrl);
-    url.searchParams.delete('_ts');
-    const response = await fetch(url.toString(), { cache: 'no-store' });
-    if (!response.ok) {
-      return [] as SheetHoldingEntry[];
-    }
-    const text = await response.text();
+    const text = await fetchSheetText(DEFAULT_PRICES_SHEET_URL);
     const rows = parseSheetPrices(text);
     return rows.map(buildSheetHolding).filter(Boolean) as SheetHoldingEntry[];
   } catch {

@@ -2,43 +2,69 @@ import { parseNumberEU } from './importers';
 
 const STORAGE_KEY = 'financeflow-fx-rates';
 
-const normalizeSheetUrl = (input: string) => {
+const resolveSheetUrls = (input: string) => {
+  const urls = new Set<string>();
+  const addUrl = (url: string | null) => {
+    if (url) urls.add(url);
+  };
+
   try {
-    const url = new URL(input);
-    if (url.hostname.includes('googleusercontent.com') && url.pathname.includes('e@')) {
-      const match = url.pathname.match(/e@([^/]+)/);
+    const direct = new URL(input);
+    addUrl(direct.toString());
+    if (direct.hostname.includes('docs.google.com') && direct.pathname.includes('/spreadsheets/d/e/')) {
+      const match = direct.pathname.match(/\/spreadsheets\/d\/e\/([^/]+)/);
       const id = match?.[1];
-      const gid = url.searchParams.get('gid');
+      if (id) {
+        const gid = direct.searchParams.get('gid');
+        const params = new URLSearchParams();
+        params.set('output', 'csv');
+        if (gid) params.set('gid', gid);
+        addUrl(`https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`);
+      }
+    }
+    if (direct.hostname.includes('docs.google.com') && direct.pathname.includes('/spreadsheets/d/')) {
+      const match = direct.pathname.match(/\/spreadsheets\/d\/([^/]+)/);
+      const id = match?.[1];
+      const gid = direct.searchParams.get('gid') ?? '0';
+      if (id) {
+        addUrl(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`);
+      }
+    }
+    if (direct.hostname.includes('googleusercontent.com') && direct.pathname.includes('e@')) {
+      const match = direct.pathname.match(/e@([^/]+)/);
+      const id = match?.[1];
+      const gid = direct.searchParams.get('gid');
       if (id) {
         const params = new URLSearchParams();
         params.set('output', 'csv');
         if (gid) params.set('gid', gid);
-        return `https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`;
-      }
-    }
-    if (url.hostname.includes('docs.google.com') && url.pathname.includes('/spreadsheets/d/e/')) {
-      const match = url.pathname.match(/\/spreadsheets\/d\/e\/([^/]+)/);
-      const id = match?.[1];
-      if (id) {
-        const gid = url.searchParams.get('gid');
-        const params = new URLSearchParams();
-        params.set('output', 'csv');
-        if (gid) params.set('gid', gid);
-        return `https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`;
-      }
-    }
-    if (url.hostname.includes('docs.google.com') && url.pathname.includes('/spreadsheets/d/')) {
-      const match = url.pathname.match(/\/spreadsheets\/d\/([^/]+)/);
-      const id = match?.[1];
-      const gid = url.searchParams.get('gid') ?? '0';
-      if (id) {
-        return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+        addUrl(`https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`);
       }
     }
   } catch {
-    return input;
+    const match = input.match(/e@([^/\\s?]+)/);
+    const id = match?.[1];
+    if (id) {
+      addUrl(`https://docs.google.com/spreadsheets/d/e/${id}/pub?output=csv`);
+    }
   }
-  return input;
+
+  return Array.from(urls);
+};
+
+const fetchSheetText = async (input: string) => {
+  const candidates = resolveSheetUrls(input);
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate);
+      if (response.ok) {
+        return response.text();
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+  throw new Error('No se pudo cargar FX desde Google Sheets.');
 };
 
 const detectDelimiter = (line: string) => {
@@ -69,11 +95,7 @@ const splitLine = (line: string, delimiter: string) => {
 };
 
 export const loadFxRatesFromSheet = async (sheetUrl: string, baseCurrency: string) => {
-  const response = await fetch(normalizeSheetUrl(sheetUrl));
-  if (!response.ok) {
-    throw new Error('No se pudo cargar FX desde Google Sheets.');
-  }
-  const text = await response.text();
+  const text = await fetchSheetText(sheetUrl);
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const rates: Record<string, number> = {};
   lines.forEach((line) => {
