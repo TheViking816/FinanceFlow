@@ -40,6 +40,17 @@ const DEFAULT_PRICES_SHEET_URL =
 const normalizeSheetUrl = (input: string) => {
   try {
     const url = new URL(input);
+    if (url.hostname.includes('googleusercontent.com') && url.pathname.includes('e@')) {
+      const match = url.pathname.match(/e@([^/]+)/);
+      const id = match?.[1];
+      const gid = url.searchParams.get('gid');
+      if (id) {
+        const params = new URLSearchParams();
+        params.set('output', 'csv');
+        if (gid) params.set('gid', gid);
+        return `https://docs.google.com/spreadsheets/d/e/${id}/pub?${params.toString()}`;
+      }
+    }
     if (url.hostname.includes('docs.google.com') && url.pathname.includes('/spreadsheets/d/e/')) {
       const match = url.pathname.match(/\/spreadsheets\/d\/e\/([^/]+)/);
       const id = match?.[1];
@@ -198,8 +209,11 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
 
 export const getSheetPriceEntries = async () => {
   try {
-    const url = new URL(normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL));
-    url.searchParams.set('_ts', Date.now().toString());
+    const normalizedUrl = normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL);
+    const url = new URL(normalizedUrl);
+    if (url.hostname.includes('docs.google.com')) {
+      url.searchParams.set('_ts', Date.now().toString());
+    }
     const response = await fetch(url.toString(), { cache: 'no-store' });
     if (!response.ok) {
       return [] as SecurityPrice[];
@@ -228,8 +242,11 @@ export const getSheetPriceEntries = async () => {
 
 export const getSheetHoldings = async () => {
   try {
-    const url = new URL(normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL));
-    url.searchParams.set('_ts', Date.now().toString());
+    const normalizedUrl = normalizeSheetUrl(DEFAULT_PRICES_SHEET_URL);
+    const url = new URL(normalizedUrl);
+    if (url.hostname.includes('docs.google.com')) {
+      url.searchParams.set('_ts', Date.now().toString());
+    }
     const response = await fetch(url.toString(), { cache: 'no-store' });
     if (!response.ok) {
       return [] as SheetHoldingEntry[];
