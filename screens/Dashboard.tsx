@@ -184,9 +184,7 @@ const Dashboard: React.FC = () => {
             <h2 className="text-lg font-bold leading-tight">{displayName}</h2>
           </div>
         </div>
-        <button className="relative p-2 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700">
-          <span className="material-symbols-outlined text-slate-700 dark:text-slate-200">notifications</span>
-        </button>
+        <div className="w-10 h-10" />
       </header>
 
       <main className="flex-1 px-4 space-y-6 mt-2">
@@ -303,7 +301,7 @@ const Dashboard: React.FC = () => {
           </div>
         </section>
 
-        <section className="grid grid-cols-2 gap-3">
+        <section className="grid grid-cols-1 gap-3">
           <button
             onClick={() => navigate('/add-transaction')}
             className="flex flex-col items-center justify-center gap-2.5 h-24 rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 active:scale-95 transition-all"
@@ -312,12 +310,6 @@ const Dashboard: React.FC = () => {
               <span className="material-symbols-outlined text-[24px]">add</span>
             </div>
             <span className="text-xs font-bold">Anadir mov.</span>
-          </button>
-          <button className="flex flex-col items-center justify-center gap-2.5 h-24 rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 active:scale-95 transition-all">
-            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600">
-              <span className="material-symbols-outlined text-[20px]">check</span>
-            </div>
-            <span className="text-xs font-bold">Conciliar</span>
           </button>
         </section>
 

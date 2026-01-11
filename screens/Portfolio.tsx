@@ -2,14 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listHoldings, createHolding, deleteAllHoldings, syncHoldingsFromSheet } from '../data/holdings';
 import { listBrokers, createBroker } from '../data/brokers';
-import {
-  getLatestPrices,
-  getPriceKey,
-  getSheetFetchDebug,
-  getSheetPricesMeta,
-  getSheetUpsertDebug,
-  syncSheetPricesToSupabase,
-} from '../data/prices';
+import { getLatestPrices, getPriceKey, getSheetPricesMeta, syncSheetPricesToSupabase } from '../data/prices';
 import { getProfile } from '../data/profiles';
 import { useQuery } from '../hooks/useQuery';
 import LoadingState from '../components/LoadingState';
@@ -31,7 +24,6 @@ const Portfolio: React.FC = () => {
     market: '',
     currency: 'USD',
     quantity: '0',
-    avg_price: '0',
     fees_total: '0',
   });
   const [filterBroker, setFilterBroker] = useState('');
@@ -64,18 +56,6 @@ const Portfolio: React.FC = () => {
       showToast(err instanceof Error ? err.message : 'No se pudo importar holdings.', 'error');
     } finally {
       setSyncingHoldings(false);
-    }
-  };
-
-  const handleRefreshPrices = async () => {
-    if (!data) return;
-    try {
-      await handleRefreshHoldings();
-      const updated = await syncSheetPricesToSupabase(data.holdings);
-      refetch();
-      showToast(updated ? `Precios sincronizados: ${updated}` : 'Sin cambios en precios.', 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'No se pudo sincronizar precios.', 'error');
     }
   };
 
@@ -168,8 +148,6 @@ const Portfolio: React.FC = () => {
     return map;
   }, [filteredHoldings, baseCurrency]);
   const sheetMeta = getSheetPricesMeta();
-  const sheetDebug = getSheetFetchDebug();
-  const sheetUpsertDebug = getSheetUpsertDebug();
   const sheetTime = sheetMeta?.updatedAt
     ? new Date(sheetMeta.updatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
     : null;
@@ -195,7 +173,7 @@ const Portfolio: React.FC = () => {
         market: form.market.trim() || null,
         currency: form.currency.trim().toUpperCase() || 'USD',
         quantity: Number(form.quantity || 0),
-        avg_price: Number(form.avg_price || 0),
+        avg_price: 0,
         fees_total: Number(form.fees_total || 0),
       });
       showToast('Holding creado.', 'success');
@@ -207,7 +185,6 @@ const Portfolio: React.FC = () => {
         market: '',
         currency: 'USD',
         quantity: '0',
-        avg_price: '0',
         fees_total: '0',
       });
       setShowForm(false);
@@ -277,26 +254,13 @@ const Portfolio: React.FC = () => {
         <div className="flex flex-col items-center py-6">
           <p className="text-slate-500 text-sm font-medium mb-1">Valor Total</p>
           <h1 className="text-[40px] font-bold tracking-tight mb-3">{formatCurrency(totalValueBase, baseCurrency)}</h1>
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
-            <span className="material-symbols-outlined text-slate-500 text-[18px]">timeline</span>
-            <span className="text-slate-500 text-sm font-semibold">Actualiza precios desde cada activo</span>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            <button
-              className="h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-500"
-              onClick={handleRefreshPrices}
-              disabled={syncingHoldings}
-            >
-              Actualizar precios ahora
-            </button>
-            <button
-              className="h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-primary/20 text-primary"
-              onClick={handleRefreshHoldings}
-              disabled={syncingHoldings}
-            >
-              {syncingHoldings ? 'Importando...' : 'Actualizar holdings desde Sheets'}
-            </button>
-          </div>
+          <button
+            className="mt-3 h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-primary/20 text-primary"
+            onClick={handleRefreshHoldings}
+            disabled={syncingHoldings}
+          >
+            {syncingHoldings ? 'Importando...' : 'Actualizar holdings desde Sheets'}
+          </button>
           {(sheetTime || hasSheetPrices) && (
             <div className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">
               Precios desde Sheets · {sheetTime ?? 'sincronizado'}
@@ -305,26 +269,6 @@ const Portfolio: React.FC = () => {
           {Object.keys(totalsByCurrency).some((currency) => currency !== baseCurrency) && (
             <div className="mt-1 text-[10px] uppercase tracking-widest text-slate-400">
               FX activo desde Google Sheets
-            </div>
-          )}
-          {sheetDebug && (
-            <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-3 py-2 text-[10px] text-slate-500">
-              <div>Sheet debug: {sheetDebug.at}</div>
-              <div>Success URL: {sheetDebug.successUrl ?? 'none'}</div>
-              {sheetDebug.attempts.slice(0, 3).map((attempt, index) => (
-                <div key={`${attempt.url}-${index}`}>
-                  {attempt.status ? `${attempt.status}` : 'error'} · {attempt.url}
-                </div>
-              ))}
-            </div>
-          )}
-          {sheetUpsertDebug && (
-            <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[10px] text-rose-600">
-              <div>Upsert debug: {sheetUpsertDebug.at}</div>
-              <div>Error: {sheetUpsertDebug.message ?? 'none'}</div>
-              {sheetUpsertDebug.details && <div>Details: {sheetUpsertDebug.details}</div>}
-              {sheetUpsertDebug.hint && <div>Hint: {sheetUpsertDebug.hint}</div>}
-              {sheetUpsertDebug.sample && <div>Sample: {JSON.stringify(sheetUpsertDebug.sample)}</div>}
             </div>
           )}
           {missingFx.length > 0 && (
@@ -407,13 +351,6 @@ const Portfolio: React.FC = () => {
                 type="number"
                 value={form.quantity}
                 onChange={(event) => setForm((prev) => ({ ...prev, quantity: event.target.value }))}
-              />
-              <input
-                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
-                placeholder="Precio medio"
-                type="number"
-                value={form.avg_price}
-                onChange={(event) => setForm((prev) => ({ ...prev, avg_price: event.target.value }))}
               />
             </div>
             <input

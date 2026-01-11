@@ -27,7 +27,7 @@ const AssetDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { showToast } = useToast();
-  const [editForm, setEditForm] = useState({ quantity: '', avg_price: '', fees_total: '' });
+  const [editForm, setEditForm] = useState({ quantity: '', fees_total: '' });
   const [priceForm, setPriceForm] = useState({
     price_date: new Date().toISOString().slice(0, 10),
     close_price: '',
@@ -66,11 +66,10 @@ const AssetDetail: React.FC = () => {
     try {
       await updateHolding(data.holding.id, {
         quantity: Number(editForm.quantity || data.holding.quantity),
-        avg_price: Number(editForm.avg_price || data.holding.avg_price),
         fees_total: Number(editForm.fees_total || data.holding.fees_total),
       });
       showToast('Holding actualizado.', 'success');
-      setEditForm({ quantity: '', avg_price: '', fees_total: '' });
+      setEditForm({ quantity: '', fees_total: '' });
       refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'No se pudo actualizar.', 'error');
@@ -162,12 +161,6 @@ const AssetDetail: React.FC = () => {
             </p>
             <p className="text-2xl font-extrabold tracking-tight">{formatNumber(Number(holding.quantity))}</p>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">trending_up</span> Precio medio
-            </p>
-            <p className="text-xl font-extrabold tracking-tight">{formatCurrency(Number(holding.avg_price), holding.currency)}</p>
-          </div>
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm col-span-2">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
               <span className="material-symbols-outlined text-sm">query_stats</span> Precio actual
@@ -181,19 +174,12 @@ const AssetDetail: React.FC = () => {
         <div className="w-full px-4 mt-6 space-y-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/50 p-4 space-y-3">
             <h3 className="text-sm font-bold">Editar holding</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <input
                 className="rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-xs"
                 placeholder={String(holding.quantity)}
                 value={editForm.quantity}
                 onChange={(event) => setEditForm((prev) => ({ ...prev, quantity: event.target.value }))}
-                type="number"
-              />
-              <input
-                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-xs"
-                placeholder={String(holding.avg_price)}
-                value={editForm.avg_price}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, avg_price: event.target.value }))}
                 type="number"
               />
               <input

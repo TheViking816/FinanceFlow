@@ -33,7 +33,6 @@ const normalizeTicker = (ticker: string, market: string | null) => {
 const buildKey = (ticker: string, market: string | null) =>
   `${normalizeTicker(ticker, market)}__${normalizeMarket(market) || 'none'}`;
 const SHEET_META_KEY = 'financeflow-sheet-prices-meta';
-const UPSERT_DEBUG_KEY = 'financeflow-sheet-upsert-debug';
 const DEFAULT_PRICES_SHEET_URL =
   (import.meta.env.VITE_PRICES_SHEET_URL || '').trim() ||
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ7SVCAW3W1vLdvPqrn5T-eG6A73I-0HWrHdk5dvKwOEGmQXkukQCYzkzBN4tjoUOJS4tcm2-HJSXG/pub?gid=1414892855&single=true&output=csv';
@@ -108,44 +107,20 @@ const withCacheBuster = (raw: string) => {
 
 const fetchSheetText = async (input: string) => {
   const candidates = resolveSheetUrls(input).map(withCacheBuster);
-  const attempts: Array<{ url: string; status?: number; error?: string }> = [];
   for (const candidate of candidates) {
     try {
       const response = await fetch(candidate, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' },
       });
-      attempts.push({ url: candidate, status: response.status });
       if (response.ok) {
-        window.localStorage.setItem(
-          'financeflow-sheet-debug',
-          JSON.stringify({ at: new Date().toISOString(), successUrl: candidate, attempts })
-        );
         return response.text();
       }
     } catch (error) {
-      attempts.push({ url: candidate, error: error instanceof Error ? error.message : 'fetch error' });
+      void error;
     }
   }
-  window.localStorage.setItem(
-    'financeflow-sheet-debug',
-    JSON.stringify({ at: new Date().toISOString(), successUrl: null, attempts })
-  );
   throw new Error('No se pudo cargar el CSV publicado.');
-};
-
-export const getSheetFetchDebug = () => {
-  try {
-    const raw = window.localStorage.getItem('financeflow-sheet-debug');
-    if (!raw) return null;
-    return JSON.parse(raw) as {
-      at: string;
-      successUrl: string | null;
-      attempts: Array<{ url: string; status?: number; error?: string }>;
-    };
-  } catch {
-    return null;
-  }
 };
 
 const detectDelimiter = (line: string) => {
@@ -427,40 +402,10 @@ export const syncSheetPricesToSupabase = async (holdings: Holding[]) => {
       .from('security_prices')
       .upsert(batch, { onConflict: 'ticker,market,price_date' });
     if (error) {
-      window.localStorage.setItem(
-        UPSERT_DEBUG_KEY,
-        JSON.stringify({
-          at: new Date().toISOString(),
-          message: error.message,
-          details: (error as { details?: string }).details ?? null,
-          hint: (error as { hint?: string }).hint ?? null,
-          sample: batch[0],
-        })
-      );
       throw error;
     }
   }
-  window.localStorage.setItem(
-    UPSERT_DEBUG_KEY,
-    JSON.stringify({ at: new Date().toISOString(), message: null, sample: uniquePayload[0] })
-  );
   return uniquePayload.length;
-};
-
-export const getSheetUpsertDebug = () => {
-  try {
-    const raw = window.localStorage.getItem(UPSERT_DEBUG_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as {
-      at: string;
-      message: string | null;
-      details?: string | null;
-      hint?: string | null;
-      sample?: Record<string, unknown>;
-    };
-  } catch {
-    return null;
-  }
 };
 
 export const listPricesForHolding = async (ticker: string, market: string | null) => {
