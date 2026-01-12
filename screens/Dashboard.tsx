@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listAccounts } from '../data/accounts';
 import { listCategories } from '../data/categories';
@@ -56,6 +56,7 @@ const Dashboard: React.FC = () => {
   const { showToast } = useToast();
   const [snapshotLoading, setSnapshotLoading] = useState(false);
   const [activeSegment, setActiveSegment] = useState<string | null>(null);
+  const autoSnapshotAttempted = useRef(false);
 
   const { data, loading, error, refetch } = useQuery(async () => {
     const [profile, accounts, categories, transactions, holdings, snapshots, latestSnapshot] = await Promise.all([
@@ -167,13 +168,15 @@ const Dashboard: React.FC = () => {
     return data.snapshots.slice(-12).map((snap) => snap.total_value_base);
   }, [data]);
 
-  const handleSnapshot = async () => {
+  const handleSnapshot = async (silent = false) => {
     if (!data) return;
     setSnapshotLoading(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
       await upsertSnapshot(today, netWorth, breakdown);
-      showToast('Snapshot actualizado.', 'success');
+      if (!silent) {
+        showToast('Snapshot actualizado.', 'success');
+      }
       refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'No se pudo guardar el snapshot.', 'error');
@@ -181,6 +184,14 @@ const Dashboard: React.FC = () => {
       setSnapshotLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!data || snapshotLoading || autoSnapshotAttempted.current) return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (data.latestSnapshot?.snap_date === today) return;
+    autoSnapshotAttempted.current = true;
+    handleSnapshot(true);
+  }, [data, snapshotLoading]);
 
   if (loading) {
     return <LoadingState label="Cargando panel..." />;
@@ -291,16 +302,6 @@ const Dashboard: React.FC = () => {
                 <h3 className="font-bold text-sm">Evolucion 1 ano</h3>
                 <p className="text-xs text-slate-500">Total activos</p>
               </div>
-              <button
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleSnapshot();
-                }}
-                className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-1 rounded-md border border-primary/20"
-                disabled={snapshotLoading}
-              >
-                {snapshotLoading ? 'Guardando...' : 'Actualizar hoy'}
-              </button>
             </div>
             <div className="h-24 w-full relative">
               {snapshotPoints.length ? (

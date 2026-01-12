@@ -32,7 +32,7 @@ export const upsertSnapshot = async (snap_date: string, total_value_base: number
   const user = await requireAuth();
   const { data, error } = await supabase
     .from('portfolio_snapshots')
-    .upsert({ user_id: user.id, snap_date, total_value_base, breakdown_json })
+    .upsert({ user_id: user.id, snap_date, total_value_base, breakdown_json }, { onConflict: 'user_id,snap_date' })
     .select('*')
     .single();
   if (error) {
