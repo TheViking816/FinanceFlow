@@ -98,23 +98,43 @@ const Portfolio: React.FC = () => {
   }, [data, syncingHoldings, refetch, showToast]);
 
   const baseCurrency = (data?.profile?.base_currency ?? 'EUR').toUpperCase();
+  const sheetHoldings = data?.sheetHoldings ?? [];
+  const useSheetHoldings = sheetHoldings.length > 0;
 
   const { rates: fxSheetRates } = useFxRates(baseCurrency);
   const fxSnapshotRates = (data?.latestSnapshot?.breakdown_json as Record<string, unknown> | undefined)?.fxRates as
     | Record<string, number>
     | undefined;
   const fxRates = Object.keys(fxSheetRates).length ? fxSheetRates : fxSnapshotRates ?? {};
-  const sheetChangeMap = useMemo(() => {
-    const map = new Map<string, number>();
-    (data?.sheetHoldings ?? []).forEach((entry) => {
-      if (entry.changePercent === null || Number.isNaN(entry.changePercent)) return;
-      const key = getPriceKey(entry.ticker, entry.market ?? null);
-      map.set(key, entry.changePercent);
-    });
-    return map;
-  }, [data?.sheetHoldings]);
   const holdingsWithValue = useMemo(() => {
     if (!data) return [];
+    if (useSheetHoldings) {
+      return sheetHoldings.map((entry) => {
+        const price = Number(entry.price) || 0;
+        const quantity = Number(entry.quantity) || 0;
+        const value = quantity * price;
+        const currency = (entry.currency || baseCurrency).toUpperCase();
+        const rate = currency === baseCurrency ? 1 : fxRates?.[currency];
+        const valueBase = rate ? value * rate : value;
+        const holding = {
+          id: `sheet-${entry.ticker}-${entry.market ?? 'none'}`,
+          broker_id: null,
+          ticker: entry.ticker,
+          name: entry.name ?? entry.ticker,
+          market: entry.market ?? null,
+          currency,
+          quantity,
+        };
+        return {
+          holding,
+          price,
+          value,
+          valueBase,
+          source: 'sheet',
+          changePercent: entry.changePercent ?? null,
+        };
+      });
+    }
     return data.holdings.map((holding) => {
       const key = getPriceKey(holding.ticker, holding.market ?? null);
       const priceEntry = data.latestPrices.get(key);
@@ -124,36 +144,43 @@ const Portfolio: React.FC = () => {
       const currency = holding.currency || baseCurrency;
       const rate = currency === baseCurrency ? 1 : fxRates?.[currency];
       const valueBase = rate ? value * rate : value;
-      const changePercent = sheetChangeMap.get(key) ?? null;
       return {
         holding,
         price,
         value,
         valueBase,
         source,
-        changePercent,
+        changePercent: null,
       };
     });
-  }, [data, baseCurrency, fxRates, sheetChangeMap]);
+  }, [data, baseCurrency, fxRates, sheetHoldings, useSheetHoldings]);
 
   const filteredHoldings = useMemo(() => {
     return holdingsWithValue.filter(({ holding }) => {
-      if (filterBroker && holding.broker_id !== filterBroker) return false;
+      if (filterBroker && !useSheetHoldings && holding.broker_id !== filterBroker) return false;
       if (filterCurrency && holding.currency !== filterCurrency) return false;
       return true;
     });
-  }, [holdingsWithValue, filterBroker, filterCurrency]);
+  }, [holdingsWithValue, filterBroker, filterCurrency, useSheetHoldings]);
 
   const totalValue = filteredHoldings.reduce((sum, item) => sum + item.value, 0);
   const totalValueBase = filteredHoldings.reduce((sum, item) => sum + item.valueBase, 0);
+  const totalPrevValue = filteredHoldings.reduce((sum, item) => {
+    const changePercent = item.changePercent ?? 0;
+    const divisor = 1 + changePercent / 100;
+    if (!Number.isFinite(divisor) || divisor === 0) return sum + item.value;
+    return sum + item.value / divisor;
+  }, 0);
   const totalPrevValueBase = filteredHoldings.reduce((sum, item) => {
     const changePercent = item.changePercent ?? 0;
     const divisor = 1 + changePercent / 100;
     if (!Number.isFinite(divisor) || divisor === 0) return sum + item.valueBase;
     return sum + item.valueBase / divisor;
   }, 0);
+  const totalChangePercentNoFx = totalPrevValue ? totalValue / totalPrevValue - 1 : 0;
   const totalChangePercent = totalPrevValueBase ? totalValueBase / totalPrevValueBase - 1 : 0;
   const totalChangeLabel = `${totalChangePercent >= 0 ? '+' : ''}${formatNumber(totalChangePercent * 100)}%`;
+  const totalChangeNoFxLabel = `${totalChangePercentNoFx >= 0 ? '+' : ''}${formatNumber(totalChangePercentNoFx * 100)}%`;
   const missingFx = useMemo(() => {
     if (!fxRates) return [];
     const set = new Set<string>();
@@ -300,8 +327,13 @@ const Portfolio: React.FC = () => {
         <div className="flex flex-col items-center py-6">
           <p className="text-slate-500 text-sm font-medium mb-1">Valor Total</p>
           <h1 className="text-[40px] font-bold tracking-tight mb-3">{formatCurrency(totalValueBase, baseCurrency)}</h1>
-          <div className={`text-xs font-semibold ${totalChangePercent >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-            {totalChangeLabel} hoy
+          <div className="flex flex-col items-center gap-1">
+            <div className={`text-xs font-semibold ${totalChangePercent >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+              {totalChangeLabel} hoy (con FX)
+            </div>
+            <div className={`text-xs font-semibold ${totalChangePercentNoFx >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+              {totalChangeNoFxLabel} hoy (sin FX)
+            </div>
           </div>
           <button
             className="mt-3 h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-primary/20 text-primary"
@@ -338,18 +370,20 @@ const Portfolio: React.FC = () => {
         </div>
 
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-          <select
-            className="px-4 h-9 rounded-full text-sm font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-            value={filterBroker}
-            onChange={(event) => setFilterBroker(event.target.value)}
-          >
-            <option value="">Todos los brokers</option>
-            {data?.brokers.map((broker) => (
-              <option key={broker.id} value={broker.id}>
-                {broker.name}
-              </option>
-            ))}
-          </select>
+          {!useSheetHoldings && (
+            <select
+              className="px-4 h-9 rounded-full text-sm font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+              value={filterBroker}
+              onChange={(event) => setFilterBroker(event.target.value)}
+            >
+              <option value="">Todos los brokers</option>
+              {data?.brokers.map((broker) => (
+                <option key={broker.id} value={broker.id}>
+                  {broker.name}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             className="px-4 h-9 rounded-full text-sm font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
             value={filterCurrency}
@@ -458,9 +492,15 @@ const Portfolio: React.FC = () => {
           </div>
           {sortedHoldings.length ? (
             sortedHoldings.map(({ holding, price, value, valueBase, source, changePercent }) => (
-                <div
+              <div
                   key={holding.id}
-                  onClick={() => navigate(`/asset/${holding.id}`)}
+                  onClick={() => {
+                    if (useSheetHoldings) {
+                      showToast('Activos desde Sheets no tienen detalle.', 'info');
+                      return;
+                    }
+                    navigate(`/asset/${holding.id}`);
+                  }}
                   className="flex gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm cursor-pointer active:scale-[0.99] transition-all"
                 >
                   <div className="size-12 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0">

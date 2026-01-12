@@ -10,6 +10,28 @@ import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
 import { useToast } from '../components/ToastProvider';
 
+const slugifyLogoKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
+const logoModules = import.meta.glob('../assets/logos/*.{png,jpg,jpeg,svg,webp}', {
+  eager: true,
+  as: 'url',
+});
+const logosByName = new Map(
+  Object.entries(logoModules).map(([path, url]) => {
+    const filename = path.split('/').pop() ?? '';
+    const name = slugifyLogoKey(filename.replace(/\.[^.]+$/, ''));
+    return [name, url as string];
+  }),
+);
+
 const Accounts: React.FC = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -221,7 +243,20 @@ const Accounts: React.FC = () => {
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-11 h-11 rounded-full border border-slate-100 dark:border-slate-700 flex items-center justify-center text-primary bg-primary/10 text-xs font-bold">
-                      {account.name.slice(0, 2).toUpperCase()}
+                      {(() => {
+                        const logoKey = account.institution ? slugifyLogoKey(account.institution) : '';
+                        const logoUrl = logoKey ? logosByName.get(logoKey) : undefined;
+                        if (logoUrl) {
+                          return (
+                            <img
+                              src={logoUrl}
+                              alt={account.institution ?? account.name}
+                              className="w-7 h-7 object-contain"
+                            />
+                          );
+                        }
+                        return account.name.slice(0, 2).toUpperCase();
+                      })()}
                     </div>
                     <div>
                       <p className="font-bold text-sm">{account.name}</p>
