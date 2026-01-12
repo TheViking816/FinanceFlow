@@ -15,6 +15,27 @@ import EmptyState from '../components/EmptyState';
 import { useToast } from '../components/ToastProvider';
 import { useFxRates } from '../hooks/useFxRates';
 
+const logoModules = import.meta.glob('../assets/logos/*.{png,jpg,jpeg,svg,webp}', {
+  eager: true,
+  as: 'url',
+});
+const logosByName = new Map(
+  Object.entries(logoModules).map(([path, url]) => {
+    const filename = path.split('/').pop() ?? '';
+    const name = filename.replace(/\.[^.]+$/, '').toLowerCase();
+    return [name, url as string];
+  }),
+);
+
+const slugifyLogoKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
 const buildSparklinePath = (values: number[], width: number, height: number) => {
   if (values.length < 2) return '';
   const max = Math.max(...values);
@@ -323,11 +344,17 @@ const Dashboard: React.FC = () => {
                 const isIncome = transaction.kind === 'income';
                 const icon = category?.icon || (isIncome ? 'work' : 'shopping_cart');
                 const label = category?.name || (transaction.kind === 'transfer' ? 'Transferencia' : 'Sin categoria');
+                const logoKey = transaction.description ? slugifyLogoKey(transaction.description) : '';
+                const logoUrl = logoKey ? logosByName.get(logoKey) : undefined;
                 return (
                   <div key={transaction.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
-                        <span className="material-symbols-outlined">{icon}</span>
+                        {logoUrl ? (
+                          <img src={logoUrl} alt={transaction.description ?? label} className="w-6 h-6 object-contain" />
+                        ) : (
+                          <span className="material-symbols-outlined">{icon}</span>
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-bold">{transaction.description || label}</p>
