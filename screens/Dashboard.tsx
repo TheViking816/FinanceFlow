@@ -15,6 +15,16 @@ import EmptyState from '../components/EmptyState';
 import { useToast } from '../components/ToastProvider';
 import { useFxRates } from '../hooks/useFxRates';
 
+const slugifyLogoKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
 const logoModules = import.meta.glob('../assets/logos/*.{png,jpg,jpeg,svg,webp}', {
   eager: true,
   as: 'url',
@@ -22,19 +32,10 @@ const logoModules = import.meta.glob('../assets/logos/*.{png,jpg,jpeg,svg,webp}'
 const logosByName = new Map(
   Object.entries(logoModules).map(([path, url]) => {
     const filename = path.split('/').pop() ?? '';
-    const name = filename.replace(/\.[^.]+$/, '').toLowerCase();
+    const name = slugifyLogoKey(filename.replace(/\.[^.]+$/, ''));
     return [name, url as string];
   }),
 );
-
-const slugifyLogoKey = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .normalize('NFC')
-    .replace(/[^\p{L}\p{N}\s-]/gu, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
 
 const buildSparklinePath = (values: number[], width: number, height: number) => {
   if (values.length < 2) return '';
@@ -344,7 +345,7 @@ const Dashboard: React.FC = () => {
                 const isIncome = transaction.kind === 'income';
                 const icon = category?.icon || (isIncome ? 'work' : 'shopping_cart');
                 const label = category?.name || (transaction.kind === 'transfer' ? 'Transferencia' : 'Sin categoria');
-                const logoKey = transaction.description ? slugifyLogoKey(transaction.description) : '';
+                const logoKey = category?.icon ? slugifyLogoKey(category.icon) : '';
                 const logoUrl = logoKey ? logosByName.get(logoKey) : undefined;
                 return (
                   <div key={transaction.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
