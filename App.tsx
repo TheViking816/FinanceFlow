@@ -19,6 +19,7 @@ const AddTransaction = React.lazy(() => import('./screens/AddTransaction'));
 const EditTransaction = React.lazy(() => import('./screens/EditTransaction'));
 const Reports = React.lazy(() => import('./screens/Reports'));
 const ImportPortfolio = React.lazy(() => import('./screens/ImportPortfolio'));
+const PortfolioStats = React.lazy(() => import('./screens/PortfolioStats'));
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -58,6 +59,14 @@ const AppContent: React.FC = () => {
             element={
               <RequireAuth>
                 <Portfolio />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/portfolio-stats"
+            element={
+              <RequireAuth>
+                <PortfolioStats />
               </RequireAuth>
             }
           />

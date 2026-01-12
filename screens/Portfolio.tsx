@@ -2,7 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listHoldings, createHolding, deleteAllHoldings, syncHoldingsFromSheet } from '../data/holdings';
 import { listBrokers, createBroker } from '../data/brokers';
-import { getLatestPrices, getPriceKey, getSheetPricesMeta, syncSheetPricesToSupabase } from '../data/prices';
+import {
+  getLatestPrices,
+  getPriceKey,
+  getSheetHoldings,
+  getSheetPricesMeta,
+  syncSheetPricesToSupabase,
+} from '../data/prices';
 import { getProfile } from '../data/profiles';
 import { useQuery } from '../hooks/useQuery';
 import LoadingState from '../components/LoadingState';
@@ -29,16 +35,18 @@ const Portfolio: React.FC = () => {
   const [filterBroker, setFilterBroker] = useState('');
   const [filterCurrency, setFilterCurrency] = useState('');
   const [syncingHoldings, setSyncingHoldings] = useState(false);
+  const [sortBy, setSortBy] = useState<'value' | 'weight' | 'gainers' | 'losers'>('value');
 
   const { data, loading, error, refetch } = useQuery(async () => {
-    const [profile, brokers, holdings, latestSnapshot] = await Promise.all([
+    const [profile, brokers, holdings, latestSnapshot, sheetHoldings] = await Promise.all([
       getProfile(),
       listBrokers(),
       listHoldings(),
       getLatestSnapshot(),
+      getSheetHoldings(),
     ]);
     const latestPrices = await getLatestPrices(holdings);
-    return { profile, brokers, holdings, latestPrices, latestSnapshot };
+    return { profile, brokers, holdings, latestPrices, latestSnapshot, sheetHoldings };
   }, []);
 
   const handleRefreshHoldings = async () => {
@@ -91,6 +99,20 @@ const Portfolio: React.FC = () => {
 
   const baseCurrency = (data?.profile?.base_currency ?? 'EUR').toUpperCase();
 
+  const { rates: fxSheetRates } = useFxRates(baseCurrency);
+  const fxSnapshotRates = (data?.latestSnapshot?.breakdown_json as Record<string, unknown> | undefined)?.fxRates as
+    | Record<string, number>
+    | undefined;
+  const fxRates = Object.keys(fxSheetRates).length ? fxSheetRates : fxSnapshotRates ?? {};
+  const sheetChangeMap = useMemo(() => {
+    const map = new Map<string, number>();
+    (data?.sheetHoldings ?? []).forEach((entry) => {
+      if (entry.changePercent === null || Number.isNaN(entry.changePercent)) return;
+      const key = getPriceKey(entry.ticker, entry.market ?? null);
+      map.set(key, entry.changePercent);
+    });
+    return map;
+  }, [data?.sheetHoldings]);
   const holdingsWithValue = useMemo(() => {
     if (!data) return [];
     return data.holdings.map((holding) => {
@@ -99,9 +121,20 @@ const Portfolio: React.FC = () => {
       const price = priceEntry?.close_price ?? 0;
       const source = String(priceEntry?.id ?? '').startsWith('sheet-') ? 'sheet' : 'supabase';
       const value = Number(holding.quantity) * Number(price);
-      return { holding, price, value, source };
+      const currency = holding.currency || baseCurrency;
+      const rate = currency === baseCurrency ? 1 : fxRates?.[currency];
+      const valueBase = rate ? value * rate : value;
+      const changePercent = sheetChangeMap.get(key) ?? null;
+      return {
+        holding,
+        price,
+        value,
+        valueBase,
+        source,
+        changePercent,
+      };
     });
-  }, [data]);
+  }, [data, baseCurrency, fxRates, sheetChangeMap]);
 
   const filteredHoldings = useMemo(() => {
     return holdingsWithValue.filter(({ holding }) => {
@@ -111,23 +144,16 @@ const Portfolio: React.FC = () => {
     });
   }, [holdingsWithValue, filterBroker, filterCurrency]);
 
-  const { rates: fxSheetRates } = useFxRates(baseCurrency);
-  const fxSnapshotRates = (data?.latestSnapshot?.breakdown_json as Record<string, unknown> | undefined)?.fxRates as
-    | Record<string, number>
-    | undefined;
-  const fxRates = Object.keys(fxSheetRates).length ? fxSheetRates : fxSnapshotRates ?? {};
   const totalValue = filteredHoldings.reduce((sum, item) => sum + item.value, 0);
-  const totalValueBase = filteredHoldings.reduce((sum, item) => {
-    const currency = item.holding.currency || baseCurrency;
-    if (currency === baseCurrency) {
-      return sum + item.value;
-    }
-    const rate = fxRates?.[currency];
-    if (rate) {
-      return sum + item.value * rate;
-    }
-    return sum + item.value;
+  const totalValueBase = filteredHoldings.reduce((sum, item) => sum + item.valueBase, 0);
+  const totalPrevValueBase = filteredHoldings.reduce((sum, item) => {
+    const changePercent = item.changePercent ?? 0;
+    const divisor = 1 + changePercent / 100;
+    if (!Number.isFinite(divisor) || divisor === 0) return sum + item.valueBase;
+    return sum + item.valueBase / divisor;
   }, 0);
+  const totalChangePercent = totalPrevValueBase ? totalValueBase / totalPrevValueBase - 1 : 0;
+  const totalChangeLabel = `${totalChangePercent >= 0 ? '+' : ''}${formatNumber(totalChangePercent * 100)}%`;
   const missingFx = useMemo(() => {
     if (!fxRates) return [];
     const set = new Set<string>();
@@ -147,6 +173,19 @@ const Portfolio: React.FC = () => {
     });
     return map;
   }, [filteredHoldings, baseCurrency]);
+  const sortedHoldings = useMemo(() => {
+    const items = [...filteredHoldings];
+    if (sortBy === 'weight') {
+      items.sort((a, b) => b.valueBase - a.valueBase);
+    } else if (sortBy === 'gainers') {
+      items.sort((a, b) => (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity));
+    } else if (sortBy === 'losers') {
+      items.sort((a, b) => (a.changePercent ?? Infinity) - (b.changePercent ?? Infinity));
+    } else {
+      items.sort((a, b) => b.value - a.value);
+    }
+    return items;
+  }, [filteredHoldings, sortBy]);
   const sheetMeta = getSheetPricesMeta();
   const sheetTime = sheetMeta?.updatedAt
     ? new Date(sheetMeta.updatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
@@ -235,6 +274,13 @@ const Portfolio: React.FC = () => {
         <h2 className="text-lg font-bold">Cartera</h2>
         <div className="flex items-center gap-2">
           <button
+            className="w-10 h-10 flex items-center justify-center rounded-full text-primary"
+            onClick={() => navigate('/portfolio-stats')}
+            title="Estadisticas"
+          >
+            <span className="material-symbols-outlined">insights</span>
+          </button>
+          <button
             className="w-10 h-10 flex items-center justify-center rounded-full text-primary bg-primary/10"
             onClick={() => navigate('/import-portfolio')}
             title="Importar cartera"
@@ -254,6 +300,9 @@ const Portfolio: React.FC = () => {
         <div className="flex flex-col items-center py-6">
           <p className="text-slate-500 text-sm font-medium mb-1">Valor Total</p>
           <h1 className="text-[40px] font-bold tracking-tight mb-3">{formatCurrency(totalValueBase, baseCurrency)}</h1>
+          <div className={`text-xs font-semibold ${totalChangePercent >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+            {totalChangeLabel} hoy
+          </div>
           <button
             className="mt-3 h-9 px-4 rounded-full text-xs font-bold uppercase tracking-widest border border-primary/20 text-primary"
             onClick={handleRefreshHoldings}
@@ -312,6 +361,19 @@ const Portfolio: React.FC = () => {
                 {currency}
               </option>
             ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs uppercase tracking-widest text-slate-400">Orden</span>
+          <select
+            className="flex-1 h-9 rounded-full text-sm font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 px-4"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as 'value' | 'weight' | 'gainers' | 'losers')}
+          >
+            <option value="value">Por valor</option>
+            <option value="weight">Por peso</option>
+            <option value="gainers">Mas suben hoy</option>
+            <option value="losers">Mas bajan hoy</option>
           </select>
         </div>
 
@@ -387,12 +449,15 @@ const Portfolio: React.FC = () => {
         <div className="space-y-3">
           <div className="flex justify-between items-end px-1">
             <h3 className="text-lg font-bold">Posiciones</h3>
-            <span className="text-xs text-slate-500">Ordenado por valor</span>
+            <span className="text-xs text-slate-500">
+              {sortBy === 'weight' ? 'Ordenado por peso' : ''}
+              {sortBy === 'gainers' ? 'Ordenado por subidas' : ''}
+              {sortBy === 'losers' ? 'Ordenado por bajadas' : ''}
+              {sortBy === 'value' ? 'Ordenado por valor' : ''}
+            </span>
           </div>
-          {filteredHoldings.length ? (
-            filteredHoldings
-              .sort((a, b) => b.value - a.value)
-              .map(({ holding, price, value, source }) => (
+          {sortedHoldings.length ? (
+            sortedHoldings.map(({ holding, price, value, valueBase, source, changePercent }) => (
                 <div
                   key={holding.id}
                   onClick={() => navigate(`/asset/${holding.id}`)}
@@ -408,11 +473,23 @@ const Portfolio: React.FC = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <p className="text-slate-500 text-sm">
-                        {formatNumber(Number(holding.quantity))} · {formatCurrency(Number(price), holding.currency)}
+                        {formatNumber(Number(holding.quantity))} · {formatCurrency(Number(price), holding.currency)} · Peso {formatNumber(totalValueBase ? (valueBase / totalValueBase) * 100 : 0)}%
                       </p>
-                      <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                        {source === 'sheet' ? 'Sheets' : 'Guardado'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {changePercent !== null && (
+                          <span
+                            className={`text-[10px] uppercase tracking-widest ${
+                              changePercent >= 0 ? 'text-emerald-500' : 'text-rose-500'
+                            }`}
+                          >
+                            {changePercent >= 0 ? '+' : ''}
+                            {formatNumber(changePercent)}%
+                          </span>
+                        )}
+                        <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                          {source === 'sheet' ? 'Sheets' : 'Guardado'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

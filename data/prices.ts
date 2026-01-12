@@ -243,6 +243,9 @@ export type SheetHoldingEntry = {
   quantity: number;
   name: string | null;
   priceDate: string;
+  changePercent: number | null;
+  low52w: number | null;
+  high52w: number | null;
 };
 
 const normalizeHeaderKey = (value: string) => value.replace(/\s+/g, '').toLowerCase();
@@ -278,6 +281,10 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
   const normalizedPrice = normalizeSheetPrice(price, currency, market);
   const quantity = parseNumberEU(getRowValue(row, ['acciones', 'cantidad', 'shares']));
   const name = (getRowValue(row, ['name', 'nombre', 'descripcion']) || '').trim() || null;
+  const changeRaw = getRowValue(row, ['change_percent', 'changepercent', '%change']);
+  const changePercent = changeRaw ? parseNumberEU(changeRaw) : null;
+  const low52wValue = parseNumberEU(getRowValue(row, ['low52w', 'low_52w', 'low52']));
+  const high52wValue = parseNumberEU(getRowValue(row, ['high52w', 'high_52w', 'high52']));
   return {
     ticker,
     market,
@@ -286,6 +293,9 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
     quantity,
     name,
     priceDate: new Date().toISOString().slice(0, 10),
+    changePercent,
+    low52w: low52wValue || null,
+    high52w: high52wValue || null,
   };
 };
 
