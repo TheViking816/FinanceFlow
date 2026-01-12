@@ -348,7 +348,11 @@ const Dashboard: React.FC = () => {
                 const logoKey = category?.icon ? slugifyLogoKey(category.icon) : '';
                 const logoUrl = logoKey ? logosByName.get(logoKey) : undefined;
                 return (
-                  <div key={transaction.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                  <div
+                    key={transaction.id}
+                    className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/edit-transaction/${transaction.id}`)}
+                  >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
                         {logoUrl ? (

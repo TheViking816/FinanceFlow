@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { listAccounts, createAccount, updateAccount, deleteAccount, countAccountTransactions } from '../data/accounts';
 import { listAllTransactions, listTransactionsForAccount } from '../data/transactions';
 import { getProfile } from '../data/profiles';
@@ -11,6 +12,7 @@ import { useToast } from '../components/ToastProvider';
 
 const Accounts: React.FC = () => {
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -277,7 +279,11 @@ const Accounts: React.FC = () => {
                   const isTransferIn = transaction.kind === 'transfer' && transaction.transfer_account_id === selectedAccount.id;
                   const sign = transaction.kind === 'income' || isTransferIn ? '+' : '-';
                   return (
-                    <div key={transaction.id} className="flex items-center justify-between p-4">
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                      onClick={() => navigate(`/edit-transaction/${transaction.id}`)}
+                    >
                       <div>
                         <p className="text-sm font-bold">{transaction.description || 'Movimiento'}</p>
                         <p className="text-xs text-slate-500">{formatShortDate(transaction.occurred_at)}</p>

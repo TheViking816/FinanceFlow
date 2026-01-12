@@ -16,12 +16,16 @@ const Settings = React.lazy(() => import('./screens/Settings'));
 const Onboarding = React.lazy(() => import('./screens/Onboarding'));
 const AssetDetail = React.lazy(() => import('./screens/AssetDetail'));
 const AddTransaction = React.lazy(() => import('./screens/AddTransaction'));
+const EditTransaction = React.lazy(() => import('./screens/EditTransaction'));
 const Reports = React.lazy(() => import('./screens/Reports'));
 const ImportPortfolio = React.lazy(() => import('./screens/ImportPortfolio'));
 
 const AppContent: React.FC = () => {
   const location = useLocation();
-  const hideNav = ['/', '/onboarding', '/add-transaction', '/import-portfolio'].includes(location.pathname) || location.pathname.startsWith('/asset/');
+  const hideNav =
+    ['/', '/onboarding', '/add-transaction', '/import-portfolio'].includes(location.pathname) ||
+    location.pathname.startsWith('/asset/') ||
+    location.pathname.startsWith('/edit-transaction');
 
   return (
     <div
@@ -86,6 +90,14 @@ const AppContent: React.FC = () => {
             element={
               <RequireAuth>
                 <AddTransaction />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/edit-transaction/:id"
+            element={
+              <RequireAuth>
+                <EditTransaction />
               </RequireAuth>
             }
           />

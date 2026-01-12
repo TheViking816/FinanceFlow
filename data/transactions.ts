@@ -55,6 +55,15 @@ export const listTransactionsByMonth = async (month: string) => {
   return (data ?? []) as Transaction[];
 };
 
+export const getTransaction = async (id: string) => {
+  await requireAuth();
+  const { data, error } = await supabase.from('transactions').select('*').eq('id', id).single();
+  if (error) {
+    throw error;
+  }
+  return data as Transaction;
+};
+
 export const createTransaction = async (input: Omit<Transaction, 'id' | 'user_id' | 'created_at'>) => {
   const user = await requireAuth();
   const { data, error } = await supabase
@@ -62,6 +71,18 @@ export const createTransaction = async (input: Omit<Transaction, 'id' | 'user_id
     .insert({ user_id: user.id, ...input })
     .select('*')
     .single();
+  if (error) {
+    throw error;
+  }
+  return data as Transaction;
+};
+
+export const updateTransaction = async (
+  id: string,
+  input: Partial<Pick<Transaction, 'amount' | 'category_id'>>,
+) => {
+  await requireAuth();
+  const { data, error } = await supabase.from('transactions').update(input).eq('id', id).select('*').single();
   if (error) {
     throw error;
   }
