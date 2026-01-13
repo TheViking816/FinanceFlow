@@ -1,0 +1,911 @@
+[
+  {
+    "ticker": "AMS:AD",
+    "symbol": "AD.AS",
+    "company_name": null,
+    "domain": null,
+    "file": "ad-as.png",
+    "logo_source": "https://img.logo.dev/ticker/AD.AS?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "AMS:UNA",
+    "symbol": "UNA.AS",
+    "company_name": null,
+    "domain": null,
+    "file": "una-as.png",
+    "logo_source": "https://img.logo.dev/ticker/UNA.AS?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "AMS:VEUR",
+    "symbol": "VEUR.AS",
+    "company_name": null,
+    "domain": null,
+    "file": "veur-as.png",
+    "logo_source": "https://img.logo.dev/ticker/VEUR.AS?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "AMS:VUSA",
+    "symbol": "VUSA.AS",
+    "company_name": null,
+    "domain": null,
+    "file": "vusa-as.png",
+    "logo_source": "https://img.logo.dev/ticker/VUSA.AS?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:ACS",
+    "symbol": "ACS.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "acs-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/ACS.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:BBVA",
+    "symbol": "BBVA.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "bbva-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/BBVA.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:EBRO",
+    "symbol": "EBRO.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "ebro-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/EBRO.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:ELE",
+    "symbol": "ELE.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "ele-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/ELE.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:ENG",
+    "symbol": "ENG.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "eng-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/ENG.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:IBE",
+    "symbol": "IBE.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "ibe-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/IBE.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:ITX",
+    "symbol": "ITX.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "itx-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/ITX.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:LDA",
+    "symbol": "LDA.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "lda-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/LDA.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:LOG",
+    "symbol": "LOG.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "log-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/LOG.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:MAP",
+    "symbol": "MAP.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "map-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/MAP.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:MCM",
+    "symbol": "MCM.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "mcm-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/MCM.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:NTGY",
+    "symbol": "NTGY.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "ntgy-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/NTGY.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:REd",
+    "symbol": "REd.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "red-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/REd.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:REP",
+    "symbol": "REP.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "rep-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/REP.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:SAB",
+    "symbol": "SAB.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "sab-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/SAB.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:VID",
+    "symbol": "VID.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "vid-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/VID.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "BME:VIS",
+    "symbol": "VIS.MC",
+    "company_name": null,
+    "domain": null,
+    "file": "vis-mc.png",
+    "logo_source": "https://img.logo.dev/ticker/VIS.MC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "EPA:BN",
+    "symbol": "BN.PA",
+    "company_name": null,
+    "domain": null,
+    "file": "bn-pa.png",
+    "logo_source": "https://img.logo.dev/ticker/BN.PA?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "HKG:0001",
+    "symbol": "0001.HK",
+    "company_name": null,
+    "domain": null,
+    "file": "0001-hk.png",
+    "logo_source": "https://img.logo.dev/ticker/0001.HK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "HKG:0144",
+    "symbol": "0144.HK",
+    "company_name": null,
+    "domain": null,
+    "file": "0144-hk.png",
+    "logo_source": "https://img.logo.dev/ticker/0144.HK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "HKG:0257",
+    "symbol": "0257.HK",
+    "company_name": null,
+    "domain": null,
+    "file": "0257-hk.png",
+    "logo_source": "https://img.logo.dev/ticker/0257.HK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "HKG:0392",
+    "symbol": "0392.HK",
+    "company_name": null,
+    "domain": null,
+    "file": "0392-hk.png",
+    "logo_source": "https://img.logo.dev/ticker/0392.HK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "HKG:0855",
+    "symbol": "0855.HK",
+    "company_name": null,
+    "domain": null,
+    "file": "0855-hk.png",
+    "logo_source": "https://img.logo.dev/ticker/0855.HK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "HKG:1038",
+    "symbol": "1038.HK",
+    "company_name": null,
+    "domain": null,
+    "file": "1038-hk.png",
+    "logo_source": "https://img.logo.dev/ticker/1038.HK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "HKG:1044",
+    "symbol": "1044.HK",
+    "company_name": null,
+    "domain": null,
+    "file": "1044-hk.png",
+    "logo_source": "https://img.logo.dev/ticker/1044.HK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "HKG:1052",
+    "symbol": "1052.HK",
+    "company_name": null,
+    "domain": null,
+    "file": "1052-hk.png",
+    "logo_source": "https://img.logo.dev/ticker/1052.HK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "HKG:2678",
+    "symbol": "2678.HK",
+    "company_name": null,
+    "domain": null,
+    "file": "2678-hk.png",
+    "logo_source": "https://img.logo.dev/ticker/2678.HK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "KMB",
+    "symbol": "KMB",
+    "company_name": null,
+    "domain": null,
+    "file": "kmb.png",
+    "logo_source": "https://img.logo.dev/ticker/KMB?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "LON:AV",
+    "symbol": "AV.L",
+    "company_name": null,
+    "domain": null,
+    "file": "av-l.png",
+    "logo_source": "https://img.logo.dev/ticker/AV.L?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "LON:BATS",
+    "symbol": "BATS.L",
+    "company_name": null,
+    "domain": null,
+    "file": "bats-l.png",
+    "logo_source": "https://img.logo.dev/ticker/BATS.L?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "LON:DGE",
+    "symbol": "DGE.L",
+    "company_name": null,
+    "domain": null,
+    "file": "dge-l.png",
+    "logo_source": "https://img.logo.dev/ticker/DGE.L?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "LON:VOD",
+    "symbol": "VOD.L",
+    "company_name": null,
+    "domain": null,
+    "file": "vod-l.png",
+    "logo_source": "https://img.logo.dev/ticker/VOD.L?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "MICC",
+    "symbol": "MICC",
+    "company_name": null,
+    "domain": null,
+    "file": "micc.png",
+    "logo_source": "https://img.logo.dev/ticker/MICC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:AAPL",
+    "symbol": "AAPL",
+    "company_name": null,
+    "domain": null,
+    "file": "aapl.png",
+    "logo_source": "https://img.logo.dev/ticker/AAPL?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:AMGN",
+    "symbol": "AMGN",
+    "company_name": null,
+    "domain": null,
+    "file": "amgn.png",
+    "logo_source": "https://img.logo.dev/ticker/AMGN?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:CMCSA",
+    "symbol": "CMCSA",
+    "company_name": null,
+    "domain": null,
+    "file": "cmcsa.png",
+    "logo_source": "https://img.logo.dev/ticker/CMCSA?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:CSCO",
+    "symbol": "CSCO",
+    "company_name": null,
+    "domain": null,
+    "file": "csco.png",
+    "logo_source": "https://img.logo.dev/ticker/CSCO?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:GILD",
+    "symbol": "GILD",
+    "company_name": null,
+    "domain": null,
+    "file": "gild.png",
+    "logo_source": "https://img.logo.dev/ticker/GILD?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:INTC",
+    "symbol": "INTC",
+    "company_name": null,
+    "domain": null,
+    "file": "intc.png",
+    "logo_source": "https://img.logo.dev/ticker/INTC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:KHC",
+    "symbol": "KHC",
+    "company_name": null,
+    "domain": null,
+    "file": "khc.png",
+    "logo_source": "https://img.logo.dev/ticker/KHC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:MSFT",
+    "symbol": "MSFT",
+    "company_name": null,
+    "domain": null,
+    "file": "msft.png",
+    "logo_source": "https://img.logo.dev/ticker/MSFT?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:PEP",
+    "symbol": "PEP",
+    "company_name": null,
+    "domain": null,
+    "file": "pep.png",
+    "logo_source": "https://img.logo.dev/ticker/PEP?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:QCOM",
+    "symbol": "QCOM",
+    "company_name": null,
+    "domain": null,
+    "file": "qcom.png",
+    "logo_source": "https://img.logo.dev/ticker/QCOM?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:SBUX",
+    "symbol": "SBUX",
+    "company_name": null,
+    "domain": null,
+    "file": "sbux.png",
+    "logo_source": "https://img.logo.dev/ticker/SBUX?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:TROW",
+    "symbol": "TROW",
+    "company_name": null,
+    "domain": null,
+    "file": "trow.png",
+    "logo_source": "https://img.logo.dev/ticker/TROW?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NASDAQ:TXN",
+    "symbol": "TXN",
+    "company_name": null,
+    "domain": null,
+    "file": "txn.png",
+    "logo_source": "https://img.logo.dev/ticker/TXN?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:ABBV",
+    "symbol": "ABBV",
+    "company_name": null,
+    "domain": null,
+    "file": "abbv.png",
+    "logo_source": "https://img.logo.dev/ticker/ABBV?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:ARE",
+    "symbol": "ARE",
+    "company_name": null,
+    "domain": null,
+    "file": "are.png",
+    "logo_source": "https://img.logo.dev/ticker/ARE?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:BBY",
+    "symbol": "BBY",
+    "company_name": null,
+    "domain": null,
+    "file": "bby.png",
+    "logo_source": "https://img.logo.dev/ticker/BBY?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:BF.B",
+    "symbol": "BF.B",
+    "company_name": null,
+    "domain": null,
+    "file": "bf-b.png",
+    "logo_source": "https://img.logo.dev/ticker/BF.B?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:BLK",
+    "symbol": "BLK",
+    "company_name": null,
+    "domain": null,
+    "file": "blk.png",
+    "logo_source": "https://img.logo.dev/ticker/BLK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:BMY",
+    "symbol": "BMY",
+    "company_name": null,
+    "domain": null,
+    "file": "bmy.png",
+    "logo_source": "https://img.logo.dev/ticker/BMY?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:CLX",
+    "symbol": "CLX",
+    "company_name": null,
+    "domain": null,
+    "file": "clx.png",
+    "logo_source": "https://img.logo.dev/ticker/CLX?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:CNI",
+    "symbol": "CNI",
+    "company_name": null,
+    "domain": null,
+    "file": "cni.png",
+    "logo_source": "https://img.logo.dev/ticker/CNI?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:CVX",
+    "symbol": "CVX",
+    "company_name": null,
+    "domain": null,
+    "file": "cvx.png",
+    "logo_source": "https://img.logo.dev/ticker/CVX?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:EL",
+    "symbol": "EL",
+    "company_name": null,
+    "domain": null,
+    "file": "el.png",
+    "logo_source": "https://img.logo.dev/ticker/EL?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:FRT",
+    "symbol": "FRT",
+    "company_name": null,
+    "domain": null,
+    "file": "frt.png",
+    "logo_source": "https://img.logo.dev/ticker/FRT?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:GIS",
+    "symbol": "GIS",
+    "company_name": null,
+    "domain": null,
+    "file": "gis.png",
+    "logo_source": "https://img.logo.dev/ticker/GIS?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:HD",
+    "symbol": "HD",
+    "company_name": null,
+    "domain": null,
+    "file": "hd.png",
+    "logo_source": "https://img.logo.dev/ticker/HD?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:HII",
+    "symbol": "HII",
+    "company_name": null,
+    "domain": null,
+    "file": "hii.png",
+    "logo_source": "https://img.logo.dev/ticker/HII?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:HRL",
+    "symbol": "HRL",
+    "company_name": null,
+    "domain": null,
+    "file": "hrl.png",
+    "logo_source": "https://img.logo.dev/ticker/HRL?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:HSY",
+    "symbol": "HSY",
+    "company_name": null,
+    "domain": null,
+    "file": "hsy.png",
+    "logo_source": "https://img.logo.dev/ticker/HSY?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:IFF",
+    "symbol": "IFF",
+    "company_name": null,
+    "domain": null,
+    "file": "iff.png",
+    "logo_source": "https://img.logo.dev/ticker/IFF?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:INGR",
+    "symbol": "INGR",
+    "company_name": null,
+    "domain": null,
+    "file": "ingr.png",
+    "logo_source": "https://img.logo.dev/ticker/INGR?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:ITW",
+    "symbol": "ITW",
+    "company_name": null,
+    "domain": null,
+    "file": "itw.png",
+    "logo_source": "https://img.logo.dev/ticker/ITW?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:JNJ",
+    "symbol": "JNJ",
+    "company_name": null,
+    "domain": null,
+    "file": "jnj.png",
+    "logo_source": "https://img.logo.dev/ticker/JNJ?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:JPM",
+    "symbol": "JPM",
+    "company_name": null,
+    "domain": null,
+    "file": "jpm.png",
+    "logo_source": "https://img.logo.dev/ticker/JPM?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:KO",
+    "symbol": "KO",
+    "company_name": null,
+    "domain": null,
+    "file": "ko.png",
+    "logo_source": "https://img.logo.dev/ticker/KO?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:LMT",
+    "symbol": "LMT",
+    "company_name": null,
+    "domain": null,
+    "file": "lmt.png",
+    "logo_source": "https://img.logo.dev/ticker/LMT?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:LOW",
+    "symbol": "LOW",
+    "company_name": null,
+    "domain": null,
+    "file": "low.png",
+    "logo_source": "https://img.logo.dev/ticker/LOW?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:LYB",
+    "symbol": "LYB",
+    "company_name": null,
+    "domain": null,
+    "file": "lyb.png",
+    "logo_source": "https://img.logo.dev/ticker/LYB?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:MAA",
+    "symbol": "MAA",
+    "company_name": null,
+    "domain": null,
+    "file": "maa.png",
+    "logo_source": "https://img.logo.dev/ticker/MAA?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:MCD",
+    "symbol": "MCD",
+    "company_name": null,
+    "domain": null,
+    "file": "mcd.png",
+    "logo_source": "https://img.logo.dev/ticker/MCD?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:MDT",
+    "symbol": "MDT",
+    "company_name": null,
+    "domain": null,
+    "file": "mdt.png",
+    "logo_source": "https://img.logo.dev/ticker/MDT?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:MMM",
+    "symbol": "MMM",
+    "company_name": null,
+    "domain": null,
+    "file": "mmm.png",
+    "logo_source": "https://img.logo.dev/ticker/MMM?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:MO",
+    "symbol": "MO",
+    "company_name": null,
+    "domain": null,
+    "file": "mo.png",
+    "logo_source": "https://img.logo.dev/ticker/MO?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:MPW",
+    "symbol": "MPW",
+    "company_name": null,
+    "domain": null,
+    "file": "mpw.png",
+    "logo_source": "https://img.logo.dev/ticker/MPW?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:MRK",
+    "symbol": "MRK",
+    "company_name": null,
+    "domain": null,
+    "file": "mrk.png",
+    "logo_source": "https://img.logo.dev/ticker/MRK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:NKE",
+    "symbol": "NKE",
+    "company_name": null,
+    "domain": null,
+    "file": "nke.png",
+    "logo_source": "https://img.logo.dev/ticker/NKE?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:O",
+    "symbol": "O",
+    "company_name": null,
+    "domain": null,
+    "file": "o.png",
+    "logo_source": "https://img.logo.dev/ticker/O?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:PG",
+    "symbol": "PG",
+    "company_name": null,
+    "domain": null,
+    "file": "pg.png",
+    "logo_source": "https://img.logo.dev/ticker/PG?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:RTX",
+    "symbol": "RTX",
+    "company_name": null,
+    "domain": null,
+    "file": "rtx.png",
+    "logo_source": "https://img.logo.dev/ticker/RTX?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:SPG",
+    "symbol": "SPG",
+    "company_name": null,
+    "domain": null,
+    "file": "spg.png",
+    "logo_source": "https://img.logo.dev/ticker/SPG?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:SWK",
+    "symbol": "SWK",
+    "company_name": null,
+    "domain": null,
+    "file": "swk.png",
+    "logo_source": "https://img.logo.dev/ticker/SWK?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:TAP",
+    "symbol": "TAP",
+    "company_name": null,
+    "domain": null,
+    "file": "tap.png",
+    "logo_source": "https://img.logo.dev/ticker/TAP?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:TGT",
+    "symbol": "TGT",
+    "company_name": null,
+    "domain": null,
+    "file": "tgt.png",
+    "logo_source": "https://img.logo.dev/ticker/TGT?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:TSN",
+    "symbol": "TSN",
+    "company_name": null,
+    "domain": null,
+    "file": "tsn.png",
+    "logo_source": "https://img.logo.dev/ticker/TSN?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:UNH",
+    "symbol": "UNH",
+    "company_name": null,
+    "domain": null,
+    "file": "unh.png",
+    "logo_source": "https://img.logo.dev/ticker/UNH?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:USB",
+    "symbol": "USB",
+    "company_name": null,
+    "domain": null,
+    "file": "usb.png",
+    "logo_source": "https://img.logo.dev/ticker/USB?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:V",
+    "symbol": "V",
+    "company_name": null,
+    "domain": null,
+    "file": "v.png",
+    "logo_source": "https://img.logo.dev/ticker/V?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:VFC",
+    "symbol": "VFC",
+    "company_name": null,
+    "domain": null,
+    "file": "vfc.png",
+    "logo_source": "https://img.logo.dev/ticker/VFC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:VZ",
+    "symbol": "VZ",
+    "company_name": null,
+    "domain": null,
+    "file": "vz.png",
+    "logo_source": "https://img.logo.dev/ticker/VZ?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:WM",
+    "symbol": "WM",
+    "company_name": null,
+    "domain": null,
+    "file": "wm.png",
+    "logo_source": "https://img.logo.dev/ticker/WM?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:WPC",
+    "symbol": "WPC",
+    "company_name": null,
+    "domain": null,
+    "file": "wpc.png",
+    "logo_source": "https://img.logo.dev/ticker/WPC?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSE:XOM",
+    "symbol": "XOM",
+    "company_name": null,
+    "domain": null,
+    "file": "xom.png",
+    "logo_source": "https://img.logo.dev/ticker/XOM?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "NYSEARCA:JEPI",
+    "symbol": "JEPI",
+    "company_name": null,
+    "domain": null,
+    "file": "jepi.png",
+    "logo_source": "https://img.logo.dev/ticker/JEPI?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  },
+  {
+    "ticker": "SCHD",
+    "symbol": "SCHD",
+    "company_name": null,
+    "domain": null,
+    "file": "schd.png",
+    "logo_source": "https://img.logo.dev/ticker/SCHD?token=pk_EUHOfvZ3SoqnmnGlV9ZUGw&format=png",
+    "status": "ok"
+  }
+]

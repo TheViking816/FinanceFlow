@@ -18,6 +18,54 @@ import { useToast } from '../components/ToastProvider';
 import { deleteAllSnapshots, getLatestSnapshot } from '../data/snapshots';
 import { useFxRates } from '../hooks/useFxRates';
 
+const slugifyLogoKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
+const logoModules = import.meta.glob('../assets/logos/*.{png,jpg,jpeg,svg,webp}', {
+  eager: true,
+  as: 'url',
+});
+const logosByName = new Map(
+  Object.entries(logoModules).map(([path, url]) => {
+    const filename = path.split('/').pop() ?? '';
+    const name = slugifyLogoKey(filename.replace(/\.[^.]+$/, ''));
+    return [name, url as string];
+  }),
+);
+
+const MARKET_LOGO_SUFFIX: Record<string, string> = {
+  BME: 'mc',
+  AMS: 'as',
+  EPA: 'pa',
+  LON: 'l',
+  HKG: 'hk',
+};
+
+const resolveLogoUrl = (name: string | null | undefined, ticker: string, market: string | null | undefined) => {
+  const marketCode = (market ?? '').toUpperCase();
+  const suffix = MARKET_LOGO_SUFFIX[marketCode];
+  const candidates = [
+    name ? slugifyLogoKey(name) : '',
+    slugifyLogoKey(ticker),
+    suffix ? slugifyLogoKey(`${ticker}-${suffix}`) : '',
+    suffix ? slugifyLogoKey(`${suffix}-${ticker}`) : '',
+    market ? slugifyLogoKey(`${ticker}-${market}`) : '',
+    market ? slugifyLogoKey(`${market}-${ticker}`) : '',
+  ].filter(Boolean);
+  for (const key of candidates) {
+    const url = logosByName.get(key);
+    if (url) return url;
+  }
+  return undefined;
+};
+
 const Portfolio: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -132,6 +180,7 @@ const Portfolio: React.FC = () => {
           valueBase,
           source: 'sheet',
           changePercent: entry.changePercent ?? null,
+          annualDividend: entry.annualDividend ?? null,
         };
       });
     }
@@ -151,6 +200,7 @@ const Portfolio: React.FC = () => {
         valueBase,
         source,
         changePercent: null,
+        annualDividend: null,
       };
     });
   }, [data, baseCurrency, fxRates, sheetHoldings, useSheetHoldings]);
@@ -165,6 +215,12 @@ const Portfolio: React.FC = () => {
 
   const totalValue = filteredHoldings.reduce((sum, item) => sum + item.value, 0);
   const totalValueBase = filteredHoldings.reduce((sum, item) => sum + item.valueBase, 0);
+  const totalAnnualDividendBase = filteredHoldings.reduce((sum, item) => {
+    const annualDividend = item.annualDividend ?? 0;
+    if (!annualDividend) return sum;
+    const quantity = Number(item.holding.quantity) || 0;
+    return sum + annualDividend * quantity;
+  }, 0);
   const totalPrevValue = filteredHoldings.reduce((sum, item) => {
     const changePercent = item.changePercent ?? 0;
     const divisor = 1 + changePercent / 100;
@@ -327,6 +383,9 @@ const Portfolio: React.FC = () => {
         <div className="flex flex-col items-center py-6">
           <p className="text-slate-500 text-sm font-medium mb-1">Valor Total</p>
           <h1 className="text-[40px] font-bold tracking-tight mb-3">{formatCurrency(totalValueBase, baseCurrency)}</h1>
+          <div className="text-xs text-slate-500 font-semibold">
+            Dividendos anuales: {formatCurrency(totalAnnualDividendBase, baseCurrency)}
+          </div>
           <div className="flex flex-col items-center gap-1">
             <div className={`text-xs font-semibold ${totalChangePercent >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
               {totalChangeLabel} hoy (con FX)
@@ -504,7 +563,19 @@ const Portfolio: React.FC = () => {
                   className="flex gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm cursor-pointer active:scale-[0.99] transition-all"
                 >
                   <div className="size-12 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0">
-                    {holding.ticker}
+                    {(() => {
+                      const logoUrl = resolveLogoUrl(holding.name, holding.ticker, holding.market);
+                      if (logoUrl) {
+                        return (
+                          <img
+                            src={logoUrl}
+                            alt={holding.name || holding.ticker}
+                            className="w-full h-full object-cover rounded-md"
+                          />
+                        );
+                      }
+                      return holding.ticker;
+                    })()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-0.5">

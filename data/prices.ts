@@ -246,6 +246,7 @@ export type SheetHoldingEntry = {
   changePercent: number | null;
   low52w: number | null;
   high52w: number | null;
+  annualDividend: number | null;
 };
 
 const normalizeHeaderKey = (value: string) => value.replace(/\s+/g, '').toLowerCase();
@@ -285,6 +286,7 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
   const changePercent = changeRaw ? parseNumberEU(changeRaw) : null;
   const low52wValue = parseNumberEU(getRowValue(row, ['low52w', 'low_52w', 'low52']));
   const high52wValue = parseNumberEU(getRowValue(row, ['high52w', 'high_52w', 'high52']));
+  const annualDividendValue = parseNumberEU(getRowValue(row, ['annual_dividend', 'annualdividend', 'dividend']));
   return {
     ticker,
     market,
@@ -296,6 +298,7 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
     changePercent,
     low52w: low52wValue || null,
     high52w: high52wValue || null,
+    annualDividend: annualDividendValue || null,
   };
 };
 
