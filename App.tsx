@@ -20,6 +20,7 @@ const EditTransaction = React.lazy(() => import('./screens/EditTransaction'));
 const Reports = React.lazy(() => import('./screens/Reports'));
 const ImportPortfolio = React.lazy(() => import('./screens/ImportPortfolio'));
 const PortfolioStats = React.lazy(() => import('./screens/PortfolioStats'));
+const SheetAssetDetail = React.lazy(() => import('./screens/SheetAssetDetail'));
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -91,6 +92,14 @@ const AppContent: React.FC = () => {
             element={
               <RequireAuth>
                 <AssetDetail />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/asset-sheet/:ticker"
+            element={
+              <RequireAuth>
+                <SheetAssetDetail />
               </RequireAuth>
             }
           />

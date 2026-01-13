@@ -247,6 +247,9 @@ export type SheetHoldingEntry = {
   low52w: number | null;
   high52w: number | null;
   annualDividend: number | null;
+  yieldPct: number | null;
+  buyIn: number | null;
+  gainRel: number | null;
 };
 
 const normalizeHeaderKey = (value: string) => value.replace(/\s+/g, '').toLowerCase();
@@ -287,6 +290,9 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
   const low52wValue = parseNumberEU(getRowValue(row, ['low52w', 'low_52w', 'low52']));
   const high52wValue = parseNumberEU(getRowValue(row, ['high52w', 'high_52w', 'high52']));
   const annualDividendValue = parseNumberEU(getRowValue(row, ['annual_dividend', 'annualdividend', 'dividend']));
+  const yieldPctValue = parseNumberEU(getRowValue(row, ['yield_pct', 'yield', 'dividend_yield']));
+  const buyInValue = parseNumberEU(getRowValue(row, ['buy-in', 'buy_in', 'avg_price', 'precio_medio']));
+  const gainRelValue = parseNumberEU(getRowValue(row, ['gainrel', 'gain_rel', 'gain_rel_pct', 'gain_pct']));
   return {
     ticker,
     market,
@@ -299,6 +305,9 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
     low52w: low52wValue || null,
     high52w: high52wValue || null,
     annualDividend: annualDividendValue || null,
+    yieldPct: yieldPctValue || null,
+    buyIn: buyInValue || null,
+    gainRel: gainRelValue || null,
   };
 };
 

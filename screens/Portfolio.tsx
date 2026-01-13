@@ -83,7 +83,7 @@ const Portfolio: React.FC = () => {
   const [filterBroker, setFilterBroker] = useState('');
   const [filterCurrency, setFilterCurrency] = useState('');
   const [syncingHoldings, setSyncingHoldings] = useState(false);
-  const [sortBy, setSortBy] = useState<'value' | 'weight' | 'gainers' | 'losers'>('value');
+  const [sortBy, setSortBy] = useState<'value' | 'weight' | 'gainers' | 'losers' | 'pnl' | 'pnl_loss'>('value');
 
   const { data, loading, error, refetch } = useQuery(async () => {
     const [profile, brokers, holdings, latestSnapshot, sheetHoldings] = await Promise.all([
@@ -181,6 +181,8 @@ const Portfolio: React.FC = () => {
           source: 'sheet',
           changePercent: entry.changePercent ?? null,
           annualDividend: entry.annualDividend ?? null,
+          buyIn: entry.buyIn ?? null,
+          gainRel: entry.gainRel ?? null,
         };
       });
     }
@@ -201,6 +203,8 @@ const Portfolio: React.FC = () => {
         source,
         changePercent: null,
         annualDividend: null,
+        buyIn: null,
+        gainRel: null,
       };
     });
   }, [data, baseCurrency, fxRates, sheetHoldings, useSheetHoldings]);
@@ -264,6 +268,18 @@ const Portfolio: React.FC = () => {
       items.sort((a, b) => (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity));
     } else if (sortBy === 'losers') {
       items.sort((a, b) => (a.changePercent ?? Infinity) - (b.changePercent ?? Infinity));
+    } else if (sortBy === 'pnl') {
+      items.sort((a, b) => {
+        const aGain = a.gainRel ?? -Infinity;
+        const bGain = b.gainRel ?? -Infinity;
+        return bGain - aGain;
+      });
+    } else if (sortBy === 'pnl_loss') {
+      items.sort((a, b) => {
+        const aGain = a.gainRel ?? Infinity;
+        const bGain = b.gainRel ?? Infinity;
+        return aGain - bGain;
+      });
     } else {
       items.sort((a, b) => b.value - a.value);
     }
@@ -383,8 +399,14 @@ const Portfolio: React.FC = () => {
         <div className="flex flex-col items-center py-6">
           <p className="text-slate-500 text-sm font-medium mb-1">Valor Total</p>
           <h1 className="text-[40px] font-bold tracking-tight mb-3">{formatCurrency(totalValueBase, baseCurrency)}</h1>
-          <div className="text-xs text-slate-500 font-semibold">
-            Dividendos anuales: {formatCurrency(totalAnnualDividendBase, baseCurrency)}
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-3 px-5 py-3 rounded-full bg-emerald-500/15 text-emerald-400 text-base font-bold uppercase tracking-widest shadow-[0_8px_24px_rgba(16,185,129,0.18)]">
+              <span className="material-symbols-outlined text-lg">paid</span>
+              Dividendos anuales {formatCurrency(totalAnnualDividendBase, baseCurrency)}
+            </div>
+            <div className="text-xs uppercase tracking-[0.2em] text-slate-300">
+              Promedio mensual {formatCurrency(totalAnnualDividendBase / 12, baseCurrency)}
+            </div>
           </div>
           <div className="flex flex-col items-center gap-1">
             <div className={`text-xs font-semibold ${totalChangePercent >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -461,12 +483,14 @@ const Portfolio: React.FC = () => {
           <select
             className="flex-1 h-9 rounded-full text-sm font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 px-4"
             value={sortBy}
-            onChange={(event) => setSortBy(event.target.value as 'value' | 'weight' | 'gainers' | 'losers')}
+            onChange={(event) => setSortBy(event.target.value as 'value' | 'weight' | 'gainers' | 'losers' | 'pnl' | 'pnl_loss')}
           >
             <option value="value">Por valor</option>
             <option value="weight">Por peso</option>
             <option value="gainers">Mas suben hoy</option>
             <option value="losers">Mas bajan hoy</option>
+            <option value="pnl">Mayor ganancia %</option>
+            <option value="pnl_loss">Mayor perdida %</option>
           </select>
         </div>
 
@@ -546,16 +570,24 @@ const Portfolio: React.FC = () => {
               {sortBy === 'weight' ? 'Ordenado por peso' : ''}
               {sortBy === 'gainers' ? 'Ordenado por subidas' : ''}
               {sortBy === 'losers' ? 'Ordenado por bajadas' : ''}
+              {sortBy === 'pnl' ? 'Ordenado por ganancia' : ''}
+              {sortBy === 'pnl_loss' ? 'Ordenado por perdida' : ''}
               {sortBy === 'value' ? 'Ordenado por valor' : ''}
             </span>
           </div>
           {sortedHoldings.length ? (
-            sortedHoldings.map(({ holding, price, value, valueBase, source, changePercent }) => (
+            sortedHoldings.map(({ holding, price, value, valueBase, source, changePercent, buyIn, gainRel }) => {
+              const avgLabel = buyIn ? formatCurrency(buyIn, baseCurrency) : null;
+              const gainRelLabel = gainRel !== null
+                ? `${gainRel >= 0 ? '+' : ''}${formatNumber(gainRel)}%`
+                : null;
+              return (
               <div
                   key={holding.id}
                   onClick={() => {
                     if (useSheetHoldings) {
-                      showToast('Activos desde Sheets no tienen detalle.', 'info');
+                      const market = holding.market ? `?market=${encodeURIComponent(holding.market)}` : '';
+                      navigate(`/asset-sheet/${encodeURIComponent(holding.ticker)}${market}`);
                       return;
                     }
                     navigate(`/asset/${holding.id}`);
@@ -587,6 +619,16 @@ const Portfolio: React.FC = () => {
                         {formatNumber(Number(holding.quantity))} · {formatCurrency(Number(price), holding.currency)} · Peso {formatNumber(totalValueBase ? (valueBase / totalValueBase) * 100 : 0)}%
                       </p>
                       <div className="flex items-center gap-2">
+                        {avgLabel && (
+                          <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                            Avg {avgLabel}
+                          </span>
+                        )}
+                        {gainRelLabel && (
+                          <span className={`text-[10px] uppercase tracking-widest ${gainRel >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {gainRelLabel}
+                          </span>
+                        )}
                         {changePercent !== null && (
                           <span
                             className={`text-[10px] uppercase tracking-widest ${
@@ -604,7 +646,8 @@ const Portfolio: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              ))
+              );
+            })
           ) : (
             <EmptyState title="Aun no tienes holdings" description="Agrega una posicion para ver su valor." />
           )}
