@@ -91,10 +91,14 @@
     const getValue = (h, col) => {
       switch (col) {
         case 'ticker': return h.ticker || '';
+        case 'shares': return h.shares || 0;
         case 'price': return h.price || 0;
         case 'value': return h.valueInEUR || 0;
         case 'gainLoss': return h.gainLoss || 0;
         case 'yield': return h.yieldPct || 0;
+        case 'yoc': return h.yoc || 0;
+        case 'per': return parseFloat(h.per) || 0;
+        case 'dividendSafetyScore': return parseFloat(h.dividendSafetyScore) || 0;
         default: return h.valueInEUR || 0; // Default sort by value
       }
     };
@@ -136,27 +140,33 @@
       const priceChangeClass = (h.changePercent || 0) >= 0 ? 'positive' : 'negative';
       const gainClass = (h.gainLoss || 0) >= 0 ? 'gain-positive' : 'gain-negative';
 
-      // IMPORTANT: Removed date from Price column
-      // Added onclick to tr for Detail Modal (except on actions)
-
+      // Updated Render with new columns and embedded actions
       return `
                 <tr class="holding-row" data-id="${h.id}">
                     <td onclick="app.openDetail('${h.id}')" style="cursor: pointer">
                         <div class="ticker-cell">
+                          <div class="ticker-info">
                             <span class="ticker-symbol">${h.fullTicker || h.ticker}</span>
                             <span class="ticker-name">${h.name}</span>
+                          </div>
+                            <!-- Embed actions directly under ticker -->
+                            <div class="ticker-actions-embedded">
+                                <span class="action-btn edit-btn">Edit</span> 
+                                <span class="action-divider">|</span> 
+                                <span class="action-btn delete-btn">Delete</span>
+                            </div>
                         </div>
                     </td>
+                    <td>${h.shares}</td>
                     <td>
                         <strong>${formatCurrency(h.costPerShare, h.currency)}</strong>
                     </td>
                     <td>
                         <div class="price-cell">
                             <span class="price-value">${formatCurrency(h.price, h.currency)}</span>
-                            <!-- Removed Date Text as requested -->
                         </div>
                     </td>
-                    <td>${h.weight.toFixed(2)}%</td>
+                    <td>${h.weight ? h.weight.toFixed(2) : '0.00'}%</td>
                     <td>
                         <div>
                             <strong>${formatCurrency(h.valueInEUR, 'EUR')}</strong>
@@ -171,12 +181,13 @@
                         </div>
                     </td>
                     <td>
-                        <!-- Updated Actions -->
-                        <div class="ticker-actions" style="visibility: visible; opacity: 1;">
-                            <a href="#" onclick="event.stopPropagation(); app.openEdit('${h.id}')">Edit</a> 
-                            <span style="color: #ccc">|</span> 
-                            <a href="#" onclick="event.stopPropagation(); app.confirmDelete('${h.id}')" style="color: #d32f2f">Delete</a>
-                        </div>
+                       ${h.yoc ? h.yoc.toFixed(2) + '%' : '-'}
+                    </td>
+                    <td>
+                       ${h.per || '-'}
+                    </td>
+                    <td>
+                       ${h.dividendSafetyScore || '-'}
                     </td>
                 </tr>
             `;
@@ -265,11 +276,40 @@
       }
     };
 
-    // Add Button
-    if (elements.btnAdd) {
-      elements.btnAdd.addEventListener('click', () => {
+    // Add Button - Robust binding
+    const btnAdd = document.querySelector('.btn-add'); // Re-select to be safe
+    if (btnAdd) {
+      btnAdd.onclick = (e) => {
+        e.preventDefault();
         resetForm();
         openModal(elements.modalPosition);
+      };
+    }
+
+    // Event Delegation for Table Actions (Edit/Delete/Row Click)
+    if (elements.holdingsBody) {
+      elements.holdingsBody.addEventListener('click', (e) => {
+        const target = e.target;
+        const row = target.closest('tr.holding-row'); // Ensure we get the holding row
+        if (!row) return;
+        const id = row.dataset.id;
+
+        // Handle Edit
+        if (target.classList.contains('edit-btn')) {
+          e.stopPropagation();
+          app.openEdit(id);
+          return;
+        }
+
+        // Handle Delete
+        if (target.classList.contains('delete-btn')) {
+          e.stopPropagation();
+          app.confirmDelete(id);
+          return;
+        }
+
+        // Handle Row Click (Detail) - if NOT clicking an action
+        app.openDetail(id);
       });
     }
 
@@ -282,14 +322,24 @@
         const shares = document.getElementById('pos-shares').value;
         const cost = document.getElementById('pos-cost').value;
 
+        // Determine type from radio
+        const selectedType = document.querySelector('input[name="pos-type"]:checked')?.value || 'buy';
+
         try {
           if (id) {
+            // Edit mode (overwrite)
             await updatePosition(id, shares, cost);
           } else {
-            await addPosition(ticker, shares, cost);
+            // Add logic (Buy or Sell)
+            if (selectedType === 'sell') {
+              await DataModule.sellPosition(ticker, shares, cost);
+            } else {
+              await addPosition(ticker, shares, cost);
+            }
           }
           closeModal(elements.modalPosition);
-          loadData(true); // Refresh
+          setLoadingState(true); // Show loading while refreshing
+          loadData(true);
         } catch (err) {
           alert('Error processing request: ' + err.message);
         }
@@ -303,6 +353,7 @@
           try {
             await deletePosition(deleteTargetId);
             closeModal(elements.modalDelete);
+            setLoadingState(true);
             loadData(true);
           } catch (err) {
             alert('Error deleting: ' + err.message);
@@ -328,9 +379,45 @@
         headers.forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
         header.classList.add(`sort-${currentSort.direction}`);
 
-        if (portfolioData) renderHoldings(portfolioData);
+        // Re-render based on current filtered data
+        filterAndRender();
       });
     });
+
+    // Search Input
+    const searchInput = document.querySelector('.search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        filterAndRender();
+      });
+    }
+  }
+
+  function setLoadingState(isLoading) {
+    const loadingText = isLoading ? 'Loading...' : '0.00 €'; // Default or '...'
+    if (isLoading) {
+      elements.totalBalance.textContent = 'Loading...';
+      elements.annualIncome.textContent = 'Loading...';
+      if (elements.monthlyIncome) elements.monthlyIncome.textContent = 'Loading...';
+      if (elements.dividendYield) elements.dividendYield.textContent = '-';
+      elements.holdingsBody.innerHTML = '<tr><td colspan="12" class="loading-row">Refreshing Data...</td></tr>';
+    }
+  }
+
+  function filterAndRender() {
+    if (!portfolioData) return;
+
+    const searchTerm = document.querySelector('.search-input')?.value.toLowerCase().trim() || '';
+
+    let filtered = portfolioData.holdings;
+    if (searchTerm) {
+      filtered = portfolioData.holdings.filter(h =>
+        (h.ticker && h.ticker.toLowerCase().includes(searchTerm)) ||
+        (h.name && h.name.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    renderHoldings({ holdings: filtered });
   }
 
   /**
@@ -338,10 +425,13 @@
    */
   async function loadData(force = false) {
     try {
+      if (!portfolioData) setLoadingState(true); // Initial load only
+
       portfolioData = await fetchData(force);
       renderSummary(portfolioData);
-      renderHoldings(portfolioData);
+      filterAndRender(); // Initial Render
       console.log('App Loaded. Data:', portfolioData);
+
     } catch (error) {
       console.error('Failed to load data:', error);
       elements.holdingsBody.innerHTML = `
@@ -356,7 +446,10 @@
   }
 
   // Init
-  setupEventListeners();
-  loadData();
+  document.addEventListener('DOMContentLoaded', () => {
+    // Re-query elements if needed or just setup
+    setupEventListeners();
+    loadData();
+  });
 
 })();

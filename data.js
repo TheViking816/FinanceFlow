@@ -120,6 +120,72 @@ const DataModule = (() => {
         { ticker: 'SCHD', name: 'Schwab US Dividend Equity', currency: 'USD', price: 28.9, fx: 0.8616, shares: 646.87, costLocal: 24.35, income: 582.18 }
     ];
 
+    // Cache for PER values
+    let perCache = {};
+
+    // Fetch PER values from Google Sheet CSV export
+    async function fetchPER() {
+        if (Object.keys(perCache).length) return perCache;
+        try {
+            // Use the published CSV link provided by the user
+            const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ7SVCAW3W1vLdvPqrn5T-eG6A73I-0HWrHdk5dvKwOEGmQXkukQCYzkzBN4tjoUOJS4tcm2-HJSXG/pub?gid=1414892855&single=true&output=csv');
+            const csvText = await response.text();
+            const lines = csvText.split('\n');
+
+            // Regex to parse CSV lines respecting quotes
+            // Matches: Quoted string OR non-comma sequence
+            const parseLine = (line) => {
+                const regex = /(?:^|,)(?:"([^"]*)"|([^,]*))/g;
+                const matches = [];
+                let match;
+                while ((match = regex.exec(line)) !== null) {
+                    // match[1] is quoted content, match[2] is unquoted
+                    let val = match[1] !== undefined ? match[1] : match[2];
+                    matches.push(val ? val.trim() : '');
+                }
+                // The regex might leave an empty match at the end, filter if needed but usually index mapping works
+                return matches;
+            };
+
+            const header = parseLine(lines[0]);
+
+            // Find 'PE' (header in CSV is 'PE') or 'PER'
+            let perIdx = header.findIndex(h => ['pe', 'per'].includes(h.toLowerCase()));
+
+            // Fallback to Index 17 if not found
+            if (perIdx === -1) {
+                console.warn('PER header not found via scan, defaulting to Index 17');
+                perIdx = 17;
+            }
+
+            const tickerIdx = header.findIndex(h => h.toLowerCase() === 'ticker');
+            // If ticker not found, default to 0
+            const finalTickerIdx = tickerIdx !== -1 ? tickerIdx : 0;
+
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const cols = parseLine(lines[i]);
+
+                if (cols.length <= perIdx) continue;
+
+                const ticker = cols[finalTickerIdx];
+                const perVal = cols[perIdx]; // No need to trim again, parseLine does it
+
+                if (ticker) perCache[ticker] = perVal || 'N/A';
+            }
+        } catch (e) {
+            console.error('Failed to fetch PER:', e);
+        }
+        return perCache;
+    }
+
+    // Placeholder for dividend safety score (could be fetched via web search)
+    async function fetchDividendSafetyScore(ticker) {
+        // For now return N/A; implement real lookup later.
+        return 'N/A';
+    }
+
+
     let cachedData = null;
     let userId = null;
 
@@ -168,6 +234,8 @@ const DataModule = (() => {
 
         if (!userId) await login();
 
+        // Ensure PER data is loaded
+        const perCache = await fetchPER();
         const { data: dbHoldings, error } = await supabase
             .from('holdings')
             .select('*')
@@ -195,19 +263,57 @@ const DataModule = (() => {
         return processHoldings(dbHoldings);
     }
 
-    async function addPosition(ticker, shares, costInfo) {
+    async function addPosition(ticker, shares, cost) {
         if (!userId) await login();
+        shares = parseFloat(shares);
+        cost = parseFloat(cost);
         const marketInfo = OFFLINE_DATA.find(m => m.ticker === ticker) || {};
-        const { error } = await supabase.from('holdings').insert({
-            user_id: userId,
-            ticker: ticker,
-            quantity: parseFloat(shares),
-            avg_price: parseFloat(costInfo),
-            currency: marketInfo.currency || 'USD',
-            name: marketInfo.name || ticker,
-            fees_total: 0
-        });
-        if (error) throw error;
+        const { data: existing } = await supabase.from('holdings').select('*').eq('user_id', userId).eq('ticker', ticker).single();
+
+        if (existing) {
+            // Weighted Average: (OldQty * OldCost + NewQty * NewCost) / (OldQty + NewQty)
+            const totalShares = existing.quantity + shares;
+            const newAvg = ((existing.quantity * existing.avg_price) + (shares * cost)) / totalShares;
+
+            const { error } = await supabase.from('holdings').update({
+                quantity: totalShares,
+                avg_price: newAvg
+            }).eq('id', existing.id);
+            if (error) throw error;
+        } else {
+            const { error } = await supabase.from('holdings').insert({
+                user_id: userId,
+                ticker: ticker,
+                quantity: shares,
+                avg_price: cost,
+                currency: marketInfo.currency || 'USD',
+                name: marketInfo.name || ticker,
+                fees_total: 0
+            });
+            if (error) throw error;
+        }
+    }
+
+    async function sellPosition(ticker, shares, price) {
+        if (!userId) await login();
+        shares = parseFloat(shares);
+        price = parseFloat(price); // Price is used for realized gain logic usually, but here just reducing shares.
+
+        const { data: existing } = await supabase.from('holdings').select('*').eq('user_id', userId).eq('ticker', ticker).single();
+
+        if (!existing) throw new Error("Position not found");
+
+        const newQuantity = existing.quantity - shares;
+        if (newQuantity <= 0) {
+            // Delete if sold out
+            await deletePosition(existing.id);
+        } else {
+            // Selling doesn't change Avg Cost per share, just quantity
+            const { error } = await supabase.from('holdings').update({
+                quantity: newQuantity
+            }).eq('id', existing.id);
+            if (error) throw error;
+        }
     }
 
     async function updatePosition(id, shares, cost) {
@@ -226,7 +332,9 @@ const DataModule = (() => {
     // --- Processing ---
 
     function processHoldings(dbHoldings) {
-        const holdings = dbHoldings.map(db => {
+        const holdings = dbHoldings.map(async db => {
+            const perVal = perCache[db.ticker] || 'N/A';
+            const dividendSafety = await fetchDividendSafetyScore(db.ticker);
             const ref = OFFLINE_DATA.find(m => m.ticker === db.ticker) || {
                 price: 0,
                 fx: 1,
@@ -238,22 +346,13 @@ const DataModule = (() => {
 
             const fx = ref.fx;
 
-            // --- USER FORMULA ---
             // Market Value = Price * FX * Shares
             const valueInEUR = db.quantity * ref.price * fx;
 
             // Cost Basis = CostLocal (Col O) * FX * Shares
-            // Note: db.avg_price should store CostLocal if seeded correctly.
             const costBasisEUR = db.quantity * db.avg_price * fx;
 
-            // Raw Value in Local Currency (for display if needed)
-            const valueLocal = db.quantity * ref.price;
-
-            // Gain/Loss in EUR
-            const gainLoss = costBasisEUR > 0 ? ((valueInEUR - costBasisEUR) / costBasisEUR) * 100 : 0;
-
-            // Income Logic (retaining original sheet logic)
-            // If shares are same as sheet, use explicit Sheet Income. Else proportional.
+            // Income Logic
             let annualIncomeEUR = 0;
             if (ref.income > 0) {
                 const incomePerShare = ref.income / ref.shares;
@@ -263,6 +362,12 @@ const DataModule = (() => {
             // Derived Yield
             const yieldPct = valueInEUR > 0 ? (annualIncomeEUR / valueInEUR) * 100 : 0;
 
+            // Yield on Cost (YOC)
+            const yoc = costBasisEUR > 0 ? (annualIncomeEUR / costBasisEUR) * 100 : 0;
+
+            // Gain/Loss
+            const gainLoss = costBasisEUR > 0 ? ((valueInEUR - costBasisEUR) / costBasisEUR) * 100 : 0;
+
             return {
                 id: db.id,
                 ticker: db.ticker,
@@ -270,41 +375,46 @@ const DataModule = (() => {
                 name: db.name,
                 shares: db.quantity,
                 price: ref.price,
-                costPerShare: db.avg_price, // Stores Local Cost
+                costPerShare: db.avg_price,
                 currency: db.currency,
                 valueInEUR: valueInEUR,
-                value: valueLocal,
+                value: db.quantity * ref.price,
                 gainLoss: gainLoss,
                 yieldPct: yieldPct,
                 annualIncomeEUR: annualIncomeEUR,
+                per: perVal,
+                dividendSafetyScore: dividendSafety,
+                yoc: yoc,
                 changePercent: 0,
                 fxToBase: fx
             };
         });
 
-        // Totals
-        const totalValue = holdings.reduce((sum, h) => sum + h.valueInEUR, 0);
-        const totalAnnualIncome = holdings.reduce((sum, h) => sum + h.annualIncomeEUR, 0);
-        const dividendYield = totalValue > 0 ? (totalAnnualIncome / totalValue) * 100 : 0;
-
-        holdings.forEach(h => {
-            h.weight = totalValue > 0 ? (h.valueInEUR / totalValue) * 100 : 0;
+        // Resolve async map and compute totals
+        return Promise.all(holdings).then(resolvedHoldings => {
+            const totalValue = resolvedHoldings.reduce((sum, h) => sum + h.valueInEUR, 0);
+            const totalAnnualIncome = resolvedHoldings.reduce((sum, h) => sum + h.annualIncomeEUR, 0);
+            const dividendYield = totalValue > 0 ? (totalAnnualIncome / totalValue) * 100 : 0;
+            resolvedHoldings.forEach(h => {
+                h.weight = totalValue > 0 ? (h.valueInEUR / totalValue) * 100 : 0;
+            });
+            const monthlyIncome = totalAnnualIncome / 12;
+            return {
+                holdings: resolvedHoldings,
+                summary: {
+                    totalValue,
+                    totalAnnualIncome,
+                    monthlyIncome,
+                    dividendYield,
+                    dailyChange: 0,
+                    holdingsCount: resolvedHoldings.length
+                }
+            };
         });
+    };
 
-        const monthlyIncome = totalAnnualIncome / 12;
 
-        return {
-            holdings,
-            summary: {
-                totalValue,
-                totalAnnualIncome,
-                monthlyIncome,
-                dividendYield,
-                dailyChange: 0,
-                holdingsCount: holdings.length
-            }
-        };
-    }
+
 
     function mockProcess() {
         // Fallback: Simulate seeding outcome
@@ -339,6 +449,7 @@ const DataModule = (() => {
     return {
         fetchData: fetchHoldings,
         addPosition,
+        sellPosition,
         updatePosition,
         deletePosition,
         formatCurrency,

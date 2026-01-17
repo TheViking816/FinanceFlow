@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screener - Cartera DGI</title>
+    <link rel="icon" type="image/png" href="assets/images/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        /* Screener Specific Styles */
+        .screener-section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .screener-header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .screener-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .screener-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .screener-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .mini-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .mini-table th {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+            color: #666;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .mini-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .mini-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .rank-up {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .rank-down {
+            color: #F44336;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header (Same as index) -->
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <img src="assets/images/logo.png" alt="FinanceFlow Logo" width="32" height="32">
+                <span class="logo-text">FinanceFlow <span class="logo-highlight">DGI</span></span>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Portfolios</a>
+                <a href="screener.html" class="nav-link active">Screener</a>
+                <a href="#" class="nav-link">Latest</a>
+                <a href="#" class="nav-link">Ideas</a>
+            </nav>
+            <div class="header-actions">
+                <input type="text" class="search-input" placeholder="Find a stock or fund">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="portfolio-header">
+            <h1 class="portfolio-title">Stock Screener</h1>
+            <p class="portfolio-date">Identifying opportunities in your portfolio</p>
+        </div>
+
+        <!-- Screener Grid -->
+        <div class="screener-grid">
+
+            <!-- Highest Dividend Yield -->
+            <section class="screener-section">
+                <div class="screener-header">
+                    <h3 class="screener-title">Highest Yield</h3>
+                </div>
+                <table class="mini-table">
+                    <thead>
+                        <tr>
+                            <th>Ticker</th>
+                            <th>Price</th>
+                            <th>Yield</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-yield">
+                        <tr>
+                            <td colspan="3">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Lowest PER -->
+            <section class="screener-section">
+                <div class="screener-header">
+                    <h3 class="screener-title">Lowest PER</h3>
+                </div>
+                <table class="mini-table">
+                    <thead>
+                        <tr>
+                            <th>Ticker</th>
+                            <th>Price</th>
+                            <th>PER</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-per">
+                        <tr>
+                            <td colspan="3">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Greatest Loss (%) -->
+            <section class="screener-section">
+                <div class="screener-header">
+                    <h3 class="screener-title">Greatest Loss (%)</h3>
+                </div>
+                <table class="mini-table">
+                    <thead>
+                        <tr>
+                            <th>Ticker</th>
+                            <th>Avg Cost</th>
+                            <th>Loss %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-loss-pct">
+                        <tr>
+                            <td colspan="3">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Top Loss (Value) -->
+            <section class="screener-section">
+                <div class="screener-header">
+                    <h3 class="screener-title">Top Loss (€ Value)</h3>
+                </div>
+                <table class="mini-table">
+                    <thead>
+                        <tr>
+                            <th>Ticker</th>
+                            <th>Market Value</th>
+                            <th>Loss €</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-loss-val">
+                        <tr>
+                            <td colspan="3">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+        </div>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="data.js"></script>
+    <script src="screener.js"></script>
+</body>
+
+</html>

@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cartera DGI - Simply Safe Style</title>
+  <link rel="icon" type="image/png" href="assets/images/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,15 +17,12 @@
   <header class="header">
     <div class="header-container">
       <div class="logo">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="32" height="32">
-          <path
-            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-        </svg>
+        <img src="assets/images/logo.png" alt="FinanceFlow Logo" width="32" height="32">
         <span class="logo-text">FinanceFlow <span class="logo-highlight">DGI</span></span>
       </div>
       <nav class="nav">
-        <a href="#" class="nav-link active">Portfolios</a>
-        <a href="#" class="nav-link">Screener</a>
+        <a href="index.html" class="nav-link active">Portfolios</a>
+        <a href="screener.html" class="nav-link">Screener</a>
         <a href="#" class="nav-link">Latest</a>
         <a href="#" class="nav-link">Ideas</a>
       </nav>
@@ -103,15 +101,16 @@
           <thead>
             <tr>
               <th class="sortable" data-sort="ticker">Ticker</th>
-              <th class="sortable" data-sort="costPerShare">Cost Per Share</th>
+              <th class="sortable" data-sort="shares">Shares</th>
+              <th class="sortable" data-sort="costPerShare">Avg Price</th>
               <th class="sortable" data-sort="price">Price</th>
-              <th class="sortable" data-sort="weight">% of Portfolio</th>
-              <th class="sortable" data-sort="value">Market Value</th>
-              <th class="sortable" data-sort="gainLoss">Gain or Loss (%)</th>
-              <th class="sortable" data-sort="yield">Dividend Yield</th>
-              <th class="sortable" data-sort="peRatio">P/E Ratio</th>
-              <th class="sortable" data-sort="safety">Dividend Safety</th>
-              <th class="sortable" data-sort="growth">Dividend Growth</th>
+              <th class="sortable" data-sort="weight">% Portfolio</th>
+              <th class="sortable" data-sort="value">Value</th>
+              <th class="sortable" data-sort="gainLoss">Gain/Loss</th>
+              <th class="sortable" data-sort="yield">Div Yield</th>
+              <th class="sortable" data-sort="yoc">YOC</th>
+              <th class="sortable" data-sort="per">PER</th>
+              <th class="sortable" data-sort="dividendSafetyScore">Div Safety</th>
             </tr>
           </thead>
           <tbody id="holdings-body">
@@ -137,22 +136,33 @@
       <h2 id="modal-title">Add Position</h2>
       <form id="form-position">
         <input type="hidden" id="pos-id">
+
+        <div class="form-group-inline">
+          <label class="radio-label">
+            <input type="radio" name="pos-type" value="buy" checked> Buy / Add
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="pos-type" value="sell"> Sell / Reduce
+          </label>
+        </div>
+
         <div class="form-group">
           <label for="pos-ticker">Ticker</label>
           <input type="text" id="pos-ticker" required placeholder="e.g. KO">
-          <small class="form-help">Must match ticker in CSV for price data</small>
+          <small class="form-help">Must match ticker in CSV</small>
         </div>
         <div class="form-group">
           <label for="pos-shares">Shares</label>
           <input type="number" id="pos-shares" required step="0.0001" min="0">
         </div>
         <div class="form-group">
-          <label for="pos-cost">Avg Cost per Share (EUR)</label>
+          <label for="pos-cost">Price per Share (EUR)</label>
           <input type="number" id="pos-cost" required step="0.01" min="0">
+          <small class="form-help" id="cost-help">Enter the execution price</small>
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-cancel">Cancel</button>
-          <button type="submit" class="btn btn-save">Save Position</button>
+          <button type="submit" class="btn btn-save">Execute</button>
         </div>
       </form>
     </div>
