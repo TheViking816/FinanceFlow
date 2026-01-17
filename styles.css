@@ -64,6 +64,40 @@
   --font-size-3xl: 40px;
 }
 
+[data-theme="dark"] {
+  /* Primary Colors */
+  --teal-dark: #2DD4BF;
+  /* Vibrant Teal for links/tickers in dark mode */
+  --teal-light: #5EEAD4;
+  --header-bg: #111827;
+  /* Darker header background explicitly for dark mode */
+  --beige-bg: #0F172A;
+  /* Deep Blue-Black background */
+  --beige-light: #1E293B;
+  /* Slightly lighter surface for hover/cards */
+
+  /* Text Colors */
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
+
+  /* Surface Colors */
+  --surface-white: #1E293B;
+  /* Card Background */
+  --surface-card: #1E293B;
+  --border-light: #334155;
+  --border-medium: #475569;
+
+  /* Update yellow banner for dark mode */
+  --yellow-banner: #422006;
+  --yellow-accent: #FBBF24;
+}
+
+/* Specific fix for Header in Dark Mode (it uses --teal-dark usually) */
+[data-theme="dark"] .header {
+  background: var(--header-bg);
+}
+
 /* Reset & Base */
 *,
 *::before,

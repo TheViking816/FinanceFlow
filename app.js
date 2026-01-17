@@ -457,7 +457,7 @@
   }
 
   // Init Logic
-  const init = () => {
+  const init = async () => {
     console.log('Initializing App...');
 
     // Initialize DOM Elements Here to ensure they exist
@@ -483,7 +483,36 @@
     elements.closeButtons = document.querySelectorAll('.close-modal, .btn-cancel');
 
     setupEventListeners();
-    loadData();
+    // --- Dark Mode Logic ---
+    const themeToggle = document.getElementById('theme-toggle');
+    const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+    // Check local storage or system preference
+    const currentTheme = localStorage.getItem('theme');
+    if (currentTheme === 'dark' || (!currentTheme && prefersDarkScheme.matches)) {
+      document.body.setAttribute('data-theme', 'dark');
+      themeToggle.textContent = '☀️';
+    } else {
+      document.body.removeAttribute('data-theme');
+      themeToggle.textContent = '🌙';
+    }
+
+    themeToggle.addEventListener('click', () => {
+      let theme = document.body.getAttribute('data-theme');
+      if (theme === 'dark') {
+        document.body.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'light');
+        themeToggle.textContent = '🌙';
+      } else {
+        document.body.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+        themeToggle.textContent = '☀️';
+      }
+    });
+
+    await loadData();
+    // Re-setup listener for add button in case DOM re-render messed it up (though it shouldn't)
+    setupAddButton();
   };
 
   if (document.readyState === 'loading') {
