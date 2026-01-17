@@ -169,6 +169,14 @@ const AssetDetail: React.FC = () => {
               {livePrice ? formatCurrency(Number(livePrice.close_price), holding.currency) : '--'}
             </p>
           </div>
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm col-span-2">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">payments</span> Precio medio (Avg)
+            </p>
+            <p className="text-2xl font-extrabold tracking-tight">
+              {holding.avg_price ? formatCurrency(Number(holding.avg_price), holding.currency) : '--'}
+            </p>
+          </div>
         </div>
 
         <div className="w-full px-4 mt-6 space-y-4">

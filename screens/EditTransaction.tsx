@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { listCategories } from '../data/categories';
+import { listCategories, updateCategory } from '../data/categories';
 import { getTransaction, updateTransaction } from '../data/transactions';
 import { useQuery } from '../hooks/useQuery';
 import LoadingState from '../components/LoadingState';
@@ -11,9 +11,15 @@ const EditTransaction: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { id } = useParams();
-  const [form, setForm] = useState({ amount: '', category_id: '' });
+  const [form, setForm] = useState({
+    amount: '',
+    category_id: '',
+    description: '',
+    occurred_at: '',
+    category_icon: '',
+  });
 
-  const { data, loading, error } = useQuery(async () => {
+  const { data, loading, error, refetch } = useQuery(async () => {
     if (!id) {
       throw new Error('Movimiento no encontrado.');
     }
@@ -23,9 +29,13 @@ const EditTransaction: React.FC = () => {
 
   useEffect(() => {
     if (!data?.transaction) return;
+    const currentCategory = data.categories.find(c => c.id === data.transaction.category_id);
     setForm({
       amount: String(data.transaction.amount ?? ''),
       category_id: data.transaction.category_id ?? '',
+      description: data.transaction.description ?? '',
+      occurred_at: data.transaction.occurred_at ? data.transaction.occurred_at.slice(0, 10) : '',
+      category_icon: currentCategory?.icon ?? '',
     });
   }, [data]);
 
@@ -45,10 +55,22 @@ const EditTransaction: React.FC = () => {
       return;
     }
     try {
+      // 1. Update Transaction
       await updateTransaction(id, {
         amount: Number(form.amount),
         category_id: data.transaction.kind === 'transfer' ? null : form.category_id || null,
+        description: form.description || null,
+        occurred_at: form.occurred_at,
       });
+
+      // 2. Update Category Icon if it changed (and not a transfer)
+      const currentCategory = data.categories.find(c => c.id === form.category_id);
+      if (currentCategory && form.category_icon !== (currentCategory.icon ?? '')) {
+        await updateCategory(currentCategory.id, {
+          icon: form.category_icon.trim() || null
+        });
+      }
+
       showToast('Movimiento actualizado.', 'success');
       navigate(-1);
     } catch (err) {
@@ -102,24 +124,59 @@ const EditTransaction: React.FC = () => {
 
         <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm divide-y dark:divide-slate-700">
           {data.transaction.kind !== 'transfer' ? (
-            <div className="p-5 space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Categoria</label>
-              <select
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
-                value={form.category_id}
-                onChange={(event) => setForm((prev) => ({ ...prev, category_id: event.target.value }))}
-              >
-                <option value="">Selecciona una categoria</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+            <div className="p-5 space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Categoria</label>
+                <select
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+                  value={form.category_id}
+                  onChange={(event) => {
+                    const newCatId = event.target.value;
+                    const cat = data.categories.find(c => c.id === newCatId);
+                    setForm((prev) => ({ ...prev, category_id: newCatId, category_icon: cat?.icon ?? '' }));
+                  }}
+                >
+                  <option value="">Selecciona una categoria</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Icono material / Imagen (png)</label>
+                <input
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+                  placeholder="Ej: shopping_cart o logo.png"
+                  value={form.category_icon}
+                  onChange={(event) => setForm((prev) => ({ ...prev, category_icon: event.target.value }))}
+                />
+              </div>
             </div>
           ) : (
             <div className="p-5 text-sm text-slate-500">Las transferencias no tienen categoria.</div>
           )}
+
+          <div className="p-5 space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</label>
+            <input
+              type="date"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+              value={form.occurred_at}
+              onChange={(event) => setForm((prev) => ({ ...prev, occurred_at: event.target.value }))}
+            />
+          </div>
+
+          <div className="p-5 space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Descripcion</label>
+            <input
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+              placeholder="Opcional"
+              value={form.description}
+              onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+            />
+          </div>
         </div>
       </main>
       <footer className="p-4 pb-12">

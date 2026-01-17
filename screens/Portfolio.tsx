@@ -182,7 +182,7 @@ const Portfolio: React.FC = () => {
           changePercent: entry.changePercent ?? null,
           annualDividend: entry.annualDividend ?? null,
           buyIn: entry.buyIn ?? null,
-          gainRel: entry.gainRel ?? null,
+          gainRel: (entry.buyIn && entry.price) ? ((entry.price / entry.buyIn) - 1) * 100 : (entry.gainRel ?? null),
         };
       });
     }
@@ -203,8 +203,8 @@ const Portfolio: React.FC = () => {
         source,
         changePercent: null,
         annualDividend: null,
-        buyIn: null,
-        gainRel: null,
+        buyIn: holding.avg_price || null,
+        gainRel: (holding.avg_price && price) ? ((price / holding.avg_price) - 1) * 100 : null,
       };
     });
   }, [data, baseCurrency, fxRates, sheetHoldings, useSheetHoldings]);
@@ -577,12 +577,12 @@ const Portfolio: React.FC = () => {
           </div>
           {sortedHoldings.length ? (
             sortedHoldings.map(({ holding, price, value, valueBase, source, changePercent, buyIn, gainRel }) => {
-              const avgLabel = buyIn ? formatCurrency(buyIn, baseCurrency) : null;
+              const avgLabel = buyIn ? formatCurrency(buyIn, holding.currency) : null;
               const gainRelLabel = gainRel !== null
                 ? `${gainRel >= 0 ? '+' : ''}${formatNumber(gainRel)}%`
                 : null;
               return (
-              <div
+                <div
                   key={holding.id}
                   onClick={() => {
                     if (useSheetHoldings) {
@@ -631,9 +631,8 @@ const Portfolio: React.FC = () => {
                         )}
                         {changePercent !== null && (
                           <span
-                            className={`text-[10px] uppercase tracking-widest ${
-                              changePercent >= 0 ? 'text-emerald-500' : 'text-rose-500'
-                            }`}
+                            className={`text-[10px] uppercase tracking-widest ${changePercent >= 0 ? 'text-emerald-500' : 'text-rose-500'
+                              }`}
                           >
                             {changePercent >= 0 ? '+' : ''}
                             {formatNumber(changePercent)}%

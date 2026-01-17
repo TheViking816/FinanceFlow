@@ -174,6 +174,12 @@ const SheetAssetDetail: React.FC = () => {
               <p className="text-[10px] uppercase tracking-widest text-slate-400">Precio</p>
               <p className="text-sm font-bold">{formatCurrency(selected.price, currency)}</p>
             </div>
+            <div className="rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
+              <p className="text-[10px] uppercase tracking-widest text-slate-400">Precio Medio</p>
+              <p className="text-sm font-bold">
+                {selected.buyIn !== null ? formatCurrency(selected.buyIn, currency) : 'N/D'}
+              </p>
+            </div>
           </div>
         </section>
       </main>

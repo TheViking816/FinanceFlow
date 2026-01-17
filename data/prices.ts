@@ -291,8 +291,10 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
   const high52wValue = parseNumberEU(getRowValue(row, ['high52w', 'high_52w', 'high52']));
   const annualDividendValue = parseNumberEU(getRowValue(row, ['annual_dividend', 'annualdividend', 'dividend']));
   const yieldPctValue = parseNumberEU(getRowValue(row, ['yield_pct', 'yield', 'dividend_yield']));
-  const buyInValue = parseNumberEU(getRowValue(row, ['buy-in', 'buy_in', 'avg_price', 'precio_medio']));
+  const buyInValue = parseNumberEU(getRowValue(row, ['buy.in.local', 'buy-in', 'buy_in', 'buy.in', 'avg_price', 'precio_medio']));
   const gainRelValue = parseNumberEU(getRowValue(row, ['gainrel', 'gain_rel', 'gain_rel_pct', 'gain_pct']));
+  const buyIn = buyInValue;
+
   return {
     ticker,
     market,
@@ -306,7 +308,7 @@ const buildSheetHolding = (row: Record<string, string>): SheetHoldingEntry | nul
     high52w: high52wValue || null,
     annualDividend: annualDividendValue || null,
     yieldPct: yieldPctValue || null,
-    buyIn: buyInValue || null,
+    buyIn: buyIn || null,
     gainRel: gainRelValue || null,
   };
 };
@@ -404,12 +406,12 @@ export const syncSheetPricesToSupabase = async (holdings: Holding[]) => {
       };
     })
     .filter(Boolean) as Array<{
-    ticker: string;
-    market: string;
-    currency: string;
-    price_date: string;
-    close_price: number;
-  }>;
+      ticker: string;
+      market: string;
+      currency: string;
+      price_date: string;
+      close_price: number;
+    }>;
 
   if (!payload.length) return 0;
   const deduped = new Map<string, typeof payload[number]>();

@@ -191,6 +191,7 @@ export const loadFxRatesFromSheet = async (sheetUrl: string, baseCurrency: strin
       const to = pair.slice(3, 6);
       const aliasMap: Record<string, string> = {
         HDK: 'HKD',
+        HKD: 'HKD',
       };
       const normalizedFrom = aliasMap[from] ?? from;
       const normalizedTo = aliasMap[to] ?? to;

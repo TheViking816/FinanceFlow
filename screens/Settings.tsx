@@ -17,6 +17,9 @@ const Settings: React.FC = () => {
   const { isDark, preference, setPreference } = useDarkMode();
   const { showToast } = useToast();
   const [form, setForm] = useState({ display_name: '', base_currency: 'EUR' });
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ newPassword: '', confirmPassword: '' });
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const { data, loading, error, refetch } = useQuery(async () => {
     const [profile, accounts, transactions, holdings] = await Promise.all([
@@ -56,6 +59,37 @@ const Settings: React.FC = () => {
     showToast('CSV descargados.', 'success');
   };
 
+  const handleChangePassword = async () => {
+    if (!passwordForm.newPassword) {
+      showToast('Introduce una nueva contraseña.', 'error');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showToast('Las contraseñas no coinciden.', 'error');
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      showToast('La contraseña debe tener al menos 6 caracteres.', 'error');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      });
+      if (error) throw error;
+
+      showToast('Contraseña actualizada correctamente.', 'success');
+      setPasswordForm({ newPassword: '', confirmPassword: '' });
+      setShowPasswordForm(false);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'No se pudo actualizar la contraseña.', 'error');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
@@ -75,12 +109,12 @@ const Settings: React.FC = () => {
   const displayName = data?.profile?.display_name ?? 'Tu perfil';
   const initials = displayName.trim()
     ? displayName
-        .trim()
-        .split(' ')
-        .map((part) => part[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase()
+      .trim()
+      .split(' ')
+      .map((part) => part[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase()
     : 'FF';
   const baseCurrency = data?.profile?.base_currency ?? 'EUR';
 
@@ -158,6 +192,54 @@ const Settings: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Seguridad</h3>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm">
+            <button
+              className="flex items-center justify-between p-4 w-full"
+              onClick={() => setShowPasswordForm(!showPasswordForm)}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px]">lock</span>
+                </div>
+                <span className="text-sm font-bold tracking-tight">Cambiar contraseña</span>
+              </div>
+              <span className={`material-symbols-outlined text-slate-300 transition-transform ${showPasswordForm ? 'rotate-90' : ''}`}>
+                chevron_right
+              </span>
+            </button>
+
+            {showPasswordForm && (
+              <div className="p-4 pt-0 space-y-3 border-t dark:border-slate-700 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="space-y-2 mt-3">
+                  <input
+                    type="password"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+                    placeholder="Nueva contraseña"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                  />
+                  <input
+                    type="password"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+                    placeholder="Confirmar nueva contraseña"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  />
+                  <button
+                    className="w-full h-10 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleChangePassword}
+                    disabled={isUpdatingPassword}
+                  >
+                    {isUpdatingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

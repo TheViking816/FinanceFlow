@@ -79,7 +79,7 @@ export const createTransaction = async (input: Omit<Transaction, 'id' | 'user_id
 
 export const updateTransaction = async (
   id: string,
-  input: Partial<Pick<Transaction, 'amount' | 'category_id'>>,
+  input: Partial<Pick<Transaction, 'amount' | 'category_id' | 'description' | 'occurred_at'>>,
 ) => {
   await requireAuth();
   const { data, error } = await supabase.from('transactions').update(input).eq('id', id).select('*').single();

@@ -90,7 +90,7 @@ export const syncHoldingsFromSheet = async () => {
     market: entry.market ?? '',
     currency: entry.currency ?? 'EUR',
     quantity: entry.quantity,
-    avg_price: entry.price,
+    avg_price: entry.buyIn || 0,
     fees_total: 0,
   }));
   const { error: deleteError } = await supabase

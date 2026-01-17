@@ -76,12 +76,12 @@ const Dashboard: React.FC = () => {
   const displayName = data?.profile?.display_name || 'Tu perfil';
   const initials = displayName.trim()
     ? displayName
-        .trim()
-        .split(' ')
-        .map((part) => part[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase()
+      .trim()
+      .split(' ')
+      .map((part) => part[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase()
     : 'FF';
 
   const balances = useMemo(() => {
@@ -346,16 +346,19 @@ const Dashboard: React.FC = () => {
                 const isIncome = transaction.kind === 'income';
                 const icon = category?.icon || (isIncome ? 'work' : 'shopping_cart');
                 const label = category?.name || (transaction.kind === 'transfer' ? 'Transferencia' : 'Sin categoria');
-                const logoKey = category?.icon ? slugifyLogoKey(category.icon) : '';
+
+                // If the icon field contains an extension (e.g. dolar.png), strip it before slugifying
+                const iconBaseName = category?.icon ? category.icon.replace(/\.[^.]+$/, '') : '';
+                const logoKey = iconBaseName ? slugifyLogoKey(iconBaseName) : '';
                 const logoUrl = logoKey ? logosByName.get(logoKey) : undefined;
                 return (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                    className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 active:bg-slate-100 dark:active:bg-slate-600 transition-all cursor-pointer group"
                     onClick={() => navigate(`/edit-transaction/${transaction.id}`)}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 group-active:scale-95 transition-transform">
                         {logoUrl ? (
                           <img src={logoUrl} alt={transaction.description ?? label} className="w-6 h-6 object-contain" />
                         ) : (
@@ -363,15 +366,18 @@ const Dashboard: React.FC = () => {
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-bold">{transaction.description || label}</p>
+                        <p className="text-sm font-bold group-hover:text-primary transition-colors">{transaction.description || label}</p>
                         <p className="text-xs text-slate-500">
                           {account?.name ?? 'Cuenta'} · {formatShortDate(transaction.occurred_at)}
                         </p>
                       </div>
                     </div>
-                    <span className={`text-sm font-bold ${isIncome ? 'text-green-600' : ''}`}>
-                      {isIncome ? '+' : '-'} {formatCurrency(Number(transaction.amount), transaction.currency)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold ${isIncome ? 'text-green-600' : ''}`}>
+                        {isIncome ? '+' : '-'} {formatCurrency(Number(transaction.amount), transaction.currency)}
+                      </span>
+                      <span className="material-symbols-outlined text-slate-300 text-sm opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                    </div>
                   </div>
                 );
               })}
