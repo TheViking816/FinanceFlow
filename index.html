@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cartera DGI - Simply Safe Style</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-container">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="32" height="32">
+          <path
+            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+        </svg>
+        <span class="logo-text">FinanceFlow <span class="logo-highlight">DGI</span></span>
+      </div>
+      <nav class="nav">
+        <a href="#" class="nav-link active">Portfolios</a>
+        <a href="#" class="nav-link">Screener</a>
+        <a href="#" class="nav-link">Latest</a>
+        <a href="#" class="nav-link">Ideas</a>
+      </nav>
+      <div class="header-actions">
+        <input type="text" class="search-input" placeholder="Find a stock or fund">
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Portfolio Title -->
+    <div class="portfolio-header">
+      <p class="portfolio-date">Actualizado <span id="update-date">-</span></p>
+      <h1 class="portfolio-title">Mi Cartera DGI</h1>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="info-banner">
+      <p>Esta cartera está sincronizada con Google Sheets para mantener los datos actualizados en tiempo real.</p>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="summary-container">
+      <div class="summary-card">
+        <div class="summary-card-inner">
+          <p class="summary-label">Balance <span id="balance-date" class="summary-date">-</span></p>
+          <p class="summary-value" id="total-balance">$0</p>
+          <p class="summary-change positive" id="daily-change">+0%</p>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-inner">
+          <p class="summary-label">Annual Income</p>
+          <p class="summary-value" id="annual-income">$0</p>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-inner">
+          <p class="summary-label">Monthly Income</p>
+          <p class="summary-value" id="monthly-income">$0</p>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-inner">
+          <p class="summary-label">Dividend Yield</p>
+          <p class="summary-value" id="dividend-yield">0%</p>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-inner">
+          <p class="summary-label">Holdings</p>
+          <p class="summary-value" id="holdings-count">0</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analysis Grid Removed as per user request -->
+
+    <!-- Holdings Section -->
+    <div class="holdings-section">
+      <div class="holdings-header">
+        <div class="holdings-actions">
+          <button class="btn btn-add">+ Add...</button>
+          <button class="btn btn-import">Import ▼</button>
+        </div>
+        <h2 class="holdings-title"><span id="holdings-total">0</span> holdings</h2>
+        <div class="holdings-controls">
+          <button class="btn btn-columns">Columns</button>
+          <button class="btn btn-export">⬇ Export</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="holdings-table">
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="ticker">Ticker</th>
+              <th class="sortable" data-sort="costPerShare">Cost Per Share</th>
+              <th class="sortable" data-sort="price">Price</th>
+              <th class="sortable" data-sort="weight">% of Portfolio</th>
+              <th class="sortable" data-sort="value">Market Value</th>
+              <th class="sortable" data-sort="gainLoss">Gain or Loss (%)</th>
+              <th class="sortable" data-sort="yield">Dividend Yield</th>
+              <th class="sortable" data-sort="peRatio">P/E Ratio</th>
+              <th class="sortable" data-sort="safety">Dividend Safety</th>
+              <th class="sortable" data-sort="growth">Dividend Growth</th>
+            </tr>
+          </thead>
+          <tbody id="holdings-body">
+            <tr>
+              <td colspan="10" class="loading-row">Cargando datos...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+
+  <!-- Modals -->
+
+  <!-- Add/Edit Position Modal -->
+  <div id="modal-position" class="modal">
+    <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <h2 id="modal-title">Add Position</h2>
+      <form id="form-position">
+        <input type="hidden" id="pos-id">
+        <div class="form-group">
+          <label for="pos-ticker">Ticker</label>
+          <input type="text" id="pos-ticker" required placeholder="e.g. KO">
+          <small class="form-help">Must match ticker in CSV for price data</small>
+        </div>
+        <div class="form-group">
+          <label for="pos-shares">Shares</label>
+          <input type="number" id="pos-shares" required step="0.0001" min="0">
+        </div>
+        <div class="form-group">
+          <label for="pos-cost">Avg Cost per Share (EUR)</label>
+          <input type="number" id="pos-cost" required step="0.01" min="0">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-cancel">Cancel</button>
+          <button type="submit" class="btn btn-save">Save Position</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="modal-delete" class="modal">
+    <div class="modal-content">
+      <h3>Delete Position</h3>
+      <p>Are you sure you want to delete <strong id="delete-ticker"></strong>?</p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" id="btn-confirm-delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock Detail Modal -->
+  <div id="modal-detail" class="modal">
+    <div class="modal-content detail-content">
+      <span class="close-modal">&times;</span>
+      <div class="detail-header">
+        <h2 id="detail-ticker">TICKER</h2>
+        <span id="detail-name">Company Name</span>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="label">Price</span>
+          <span class="value" id="detail-price">$0.00</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Market Value</span>
+          <span class="value" id="detail-value">€0.00</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Shares</span>
+          <span class="value" id="detail-shares">0</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Cost Basis</span>
+          <span class="value" id="detail-cost">€0.00</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Gain/Loss</span>
+          <span class="value" id="detail-gain">0%</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Dividend Yield</span>
+          <span class="value" id="detail-yield">0%</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Annual Income</span>
+          <span class="value highlight" id="detail-income">€0.00</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Sector</span>
+          <span class="value" id="detail-sector">-</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
