@@ -134,17 +134,24 @@ const DataModule = (() => {
 
             // Regex to parse CSV lines respecting quotes
             // Matches: Quoted string OR non-comma sequence
-            const parseLine = (line) => {
-                const regex = /(?:^|,)(?:"([^"]*)"|([^,]*))/g;
-                const matches = [];
-                let match;
-                while ((match = regex.exec(line)) !== null) {
-                    // match[1] is quoted content, match[2] is unquoted
-                    let val = match[1] !== undefined ? match[1] : match[2];
-                    matches.push(val ? val.trim() : '');
+            // Simple robust CSV parser
+            const parseLine = (text) => {
+                const result = [];
+                let curValue = '';
+                let withinQuotes = false;
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    if (char === '"') {
+                        withinQuotes = !withinQuotes;
+                    } else if (char === ',' && !withinQuotes) {
+                        result.push(curValue.trim());
+                        curValue = '';
+                    } else {
+                        curValue += char;
+                    }
                 }
-                // The regex might leave an empty match at the end, filter if needed but usually index mapping works
-                return matches;
+                result.push(curValue.trim());
+                return result;
             };
 
             const header = parseLine(lines[0]);
@@ -191,17 +198,40 @@ const DataModule = (() => {
 
     // --- Authentication ---
     async function login() {
-        if (!supabase) return 'offline-user';
+        if (!supabase) return null;
+
+        // Try to get existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            userId = session.user.id;
+            return userId;
+        }
+
+        // Attempt Sign In
         const { data: { user }, error } = await supabase.auth.signInWithPassword({
             email: 'demo@financeflow.com',
-            password: 'demo'
+            password: 'demo1234'
         });
 
         if (error) {
+            console.warn('Auto-login failed (Invalid Creds), attempting auto-signup...');
+
+            // Try sign up if login fails
             const { data: { user: newUser }, error: signUpError } = await supabase.auth.signUp({
                 email: 'demo@financeflow.com',
-                password: 'demo'
+                password: 'demo1234'
             });
+
+            if (signUpError) {
+                // Check specifically for Rate Limit (429) or Security constraints
+                if (signUpError.status === 429 || signUpError.message.includes('security purposes')) {
+                    console.warn('Auto-signup rate limited. Continuing in Offline Mode.');
+                    return null; // Graceful fallback
+                }
+
+                console.warn('Auto-signup failed:', signUpError.message);
+                return null;
+            }
             userId = newUser?.id;
         } else {
             userId = user?.id;
@@ -209,22 +239,70 @@ const DataModule = (() => {
         return userId;
     }
 
+    // --- Broker & Market Helpers ---
+    async function getOrCreateDefaultBroker() {
+        if (!userId) return null;
+
+        let { data: broker } = await supabase
+            .from('brokers')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('name', 'Default Broker')
+            .single();
+
+        if (!broker) {
+            const { data: newBroker, error } = await supabase
+                .from('brokers')
+                .insert({ user_id: userId, name: 'Default Broker' })
+                .select('id')
+                .single();
+
+            if (error) {
+                console.error('Error creating default broker:', error);
+                return null;
+            }
+            broker = newBroker;
+        }
+        return broker.id;
+    }
+
+    function parseMarketFromTicker(ticker) {
+        if (ticker.includes(':')) {
+            const parts = ticker.split(':');
+            return { market: parts[0], cleanTicker: parts[1] };
+        }
+        return { market: 'US', cleanTicker: ticker };
+    }
+
     // --- SEED SQL ---
     async function seedData() {
         if (!userId) return;
 
-        const promises = OFFLINE_DATA.map(h => {
-            return supabase.from('holdings').insert({
+        const brokerId = await getOrCreateDefaultBroker();
+        if (!brokerId) throw new Error("Broker creation failed (likely RLS). Cannot seed.");
+
+        console.log('Seeding data with Broker ID:', brokerId);
+
+        const rows = OFFLINE_DATA.map(h => {
+            const { market } = parseMarketFromTicker(h.ticker);
+            return {
                 user_id: userId,
+                broker_id: brokerId,
                 ticker: h.ticker,
+                market: market,
                 quantity: h.shares,
-                avg_price: h.costLocal, // Store Local Cost (Col O) in DB
+                avg_price: h.costLocal,
                 currency: h.currency,
                 name: h.name,
                 fees_total: 0
-            });
+            };
         });
-        await Promise.all(promises);
+
+        const { error } = await supabase.from('holdings').insert(rows);
+        if (error) {
+            console.error('Seeding Error:', error);
+            throw error;
+        }
     }
 
     // --- CRUD ---
@@ -232,42 +310,55 @@ const DataModule = (() => {
     async function fetchHoldings(forceRefresh = false) {
         if (!supabase) return mockProcess();
 
-        if (!userId) await login();
+        try {
+            if (!userId || typeof userId !== 'string') {
+                await login();
+            }
 
-        // Ensure PER data is loaded
-        const perCache = await fetchPER();
-        const { data: dbHoldings, error } = await supabase
-            .from('holdings')
-            .select('*')
-            .eq('user_id', userId);
+            // Strict Check: If userId is still not a valid string or is literal 'undefined', Force Offline Mode
+            if (!userId || typeof userId !== 'string' || userId === 'undefined') {
+                console.warn('Invalid User ID after login attempt. Falling back to offline data.');
+                return mockProcess();
+            }
 
-        if (error) {
-            console.error('Supabase Error:', error);
-            // Fallback
-            return processHoldings(OFFLINE_DATA.map(h => ({
-                id: 'csv-' + h.ticker,
-                ticker: h.ticker,
-                quantity: h.shares,
-                avg_price: h.costLocal,
-                currency: h.currency,
-                name: h.name
-            })), true);
+            // Ensure PER data is loaded
+            await fetchPER();
+
+            // NOW safe to query because we know userId is a string
+            const { data: dbHoldings, error } = await supabase
+                .from('holdings')
+                .select('*')
+                .eq('user_id', userId);
+
+            if (error) {
+                console.error('Supabase Error:', error);
+                throw error; // Triggers catch -> offline mode
+            }
+
+            if (dbHoldings.length === 0) {
+                console.log('Empty DB. Seeding...');
+                await seedData();
+                // Refetch after seeding, ensuring no infinite loop
+                return fetchHoldings(true);
+            }
+
+            return processHoldings(dbHoldings);
+        } catch (e) {
+            console.error('Fetch/Seeding Error:', e);
+            console.warn('Falling back to offline due to error.');
+            return mockProcess();
         }
-
-        if (dbHoldings.length === 0) {
-            console.log('Empty DB. Seeding...');
-            await seedData();
-            return fetchHoldings(true);
-        }
-
-        return processHoldings(dbHoldings);
     }
 
     async function addPosition(ticker, shares, cost) {
         if (!userId) await login();
         shares = parseFloat(shares);
         cost = parseFloat(cost);
+
         const marketInfo = OFFLINE_DATA.find(m => m.ticker === ticker) || {};
+        const { market } = parseMarketFromTicker(ticker);
+        const brokerId = await getOrCreateDefaultBroker();
+
         const { data: existing } = await supabase.from('holdings').select('*').eq('user_id', userId).eq('ticker', ticker).single();
 
         if (existing) {
@@ -283,7 +374,9 @@ const DataModule = (() => {
         } else {
             const { error } = await supabase.from('holdings').insert({
                 user_id: userId,
+                broker_id: brokerId,
                 ticker: ticker,
+                market: market,
                 quantity: shares,
                 avg_price: cost,
                 currency: marketInfo.currency || 'USD',
@@ -416,8 +509,11 @@ const DataModule = (() => {
 
 
 
-    function mockProcess() {
+    async function mockProcess() {
         // Fallback: Simulate seeding outcome
+        // Ensure PER data is fetched even in mock mode
+        await fetchPER();
+
         const mockHoldings = OFFLINE_DATA.map((h, i) => ({
             id: 'mock-' + i,
             ticker: h.ticker,

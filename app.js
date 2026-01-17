@@ -143,7 +143,7 @@
       // Updated Render with new columns and embedded actions
       return `
                 <tr class="holding-row" data-id="${h.id}">
-                    <td onclick="app.openDetail('${h.id}')" style="cursor: pointer">
+                    <td style="cursor: pointer">
                         <div class="ticker-cell">
                           <div class="ticker-info">
                             <span class="ticker-symbol">${h.fullTicker || h.ticker}</span>
@@ -205,7 +205,8 @@
   }
 
   function resetForm() {
-    elements.formPosition.reset();
+    const form = document.getElementById('form-position');
+    if (form) form.reset();
     document.getElementById('pos-id').value = '';
     document.getElementById('modal-title').textContent = 'Add Position';
   }
@@ -257,6 +258,8 @@
 
   // --- Event Listeners ---
 
+  // --- Event Listeners ---
+
   function setupEventListeners() {
     // Modals Close
     if (elements.closeButtons) {
@@ -279,18 +282,22 @@
     // Add Button - Robust binding
     const btnAdd = document.querySelector('.btn-add'); // Re-select to be safe
     if (btnAdd) {
+      console.log('Add Button Found, attaching listener');
       btnAdd.onclick = (e) => {
+        console.log('Add Button Clicked');
         e.preventDefault();
         resetForm();
         openModal(elements.modalPosition);
       };
+    } else {
+      console.error('Add Button NOT found during setup');
     }
 
     // Event Delegation for Table Actions (Edit/Delete/Row Click)
     if (elements.holdingsBody) {
       elements.holdingsBody.addEventListener('click', (e) => {
         const target = e.target;
-        const row = target.closest('tr.holding-row'); // Ensure we get the holding row
+        const row = target.closest('tr.holding-row');
         if (!row) return;
         const id = row.dataset.id;
 
@@ -394,13 +401,13 @@
   }
 
   function setLoadingState(isLoading) {
-    const loadingText = isLoading ? 'Loading...' : '0.00 €'; // Default or '...'
+    const loadingText = isLoading ? 'Loading...' : '0.00 €';
     if (isLoading) {
-      elements.totalBalance.textContent = 'Loading...';
-      elements.annualIncome.textContent = 'Loading...';
+      if (elements.totalBalance) elements.totalBalance.textContent = 'Loading...';
+      if (elements.annualIncome) elements.annualIncome.textContent = 'Loading...';
       if (elements.monthlyIncome) elements.monthlyIncome.textContent = 'Loading...';
       if (elements.dividendYield) elements.dividendYield.textContent = '-';
-      elements.holdingsBody.innerHTML = '<tr><td colspan="12" class="loading-row">Refreshing Data...</td></tr>';
+      if (elements.holdingsBody) elements.holdingsBody.innerHTML = '<tr><td colspan="12" class="loading-row">Refreshing Data...</td></tr>';
     }
   }
 
@@ -434,22 +441,55 @@
 
     } catch (error) {
       console.error('Failed to load data:', error);
-      elements.holdingsBody.innerHTML = `
-                <tr>
-                    <td colspan="10" class="loading-row" style="color: #F44336;">
-                        Error loading data: ${error.message}
-                        <br>Check console for details.
-                    </td>
-                </tr>
-            `;
+      if (elements.holdingsBody) {
+        elements.holdingsBody.innerHTML = `
+                 <tr>
+                     <td colspan="10" class="loading-row" style="color: #F44336;">
+                         Error loading data: ${error.message}
+                         <br>Check console for details.
+                     </td>
+                 </tr>
+             `;
+      }
+    } finally {
+      setLoadingState(false);
     }
   }
 
-  // Init
-  document.addEventListener('DOMContentLoaded', () => {
-    // Re-query elements if needed or just setup
+  // Init Logic
+  const init = () => {
+    console.log('Initializing App...');
+
+    // Initialize DOM Elements Here to ensure they exist
+    elements.updateDate = document.getElementById('update-date');
+    elements.balanceDate = document.getElementById('balance-date');
+    elements.totalBalance = document.getElementById('total-balance');
+    elements.dailyChange = document.getElementById('daily-change');
+    elements.annualIncome = document.getElementById('annual-income');
+    elements.monthlyIncome = document.getElementById('monthly-income');
+    elements.dividendYield = document.getElementById('dividend-yield');
+    elements.holdingsCount = document.getElementById('holdings-count');
+    elements.holdingsTotal = document.getElementById('holdings-total');
+    elements.holdingsBody = document.getElementById('holdings-body');
+
+    // Modals
+    elements.modalPosition = document.getElementById('modal-position');
+    elements.modalDelete = document.getElementById('modal-delete');
+    elements.modalDetail = document.getElementById('modal-detail');
+
+    // Forms & Buttons
+    elements.formPosition = document.getElementById('form-position');
+    elements.btnConfirmDelete = document.getElementById('btn-confirm-delete');
+    elements.closeButtons = document.querySelectorAll('.close-modal, .btn-cancel');
+
     setupEventListeners();
     loadData();
-  });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 
 })();
