@@ -1,0 +1,5 @@
+{
+  "name": "FinanceFlow DGI Portfolio",
+  "description": "A professional Dividend Growth Investing portfolio tracker that synchronizes market data from Google Sheets and stores user positions in Supabase.",
+  "requestFramePermissions": []
+}
