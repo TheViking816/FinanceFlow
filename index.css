@@ -1,0 +1,12 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100%;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
