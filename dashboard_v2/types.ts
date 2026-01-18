@@ -1,6 +1,7 @@
 
 export interface Holding {
   id: string;
+  sourceId?: string;
   ticker: string; 
   rawTicker: string; 
   name: string;
@@ -28,6 +29,30 @@ export interface PortfolioSummary {
   yoc: number;
   holdingsCount: number;
   dailyChange: number;
+}
+
+export interface HoldingUser {
+  id: string;
+  user_id: string;
+  ticker: string;
+  quantity: number;
+  avg_price: number;
+  currency: string;
+  created_at: string;
+}
+
+export interface HoldingPending {
+  id: string;
+  user_id: string;
+  ticker: string;
+  name: string | null;
+  currency: string | null;
+  price: number | null;
+  yield_pct: number | null;
+  low52w: number | null;
+  high52w: number | null;
+  daily_change: number | null;
+  created_at: string;
 }
 
 export interface MarketData {

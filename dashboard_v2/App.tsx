@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './services/supabase';
 import { fetchAllData, cleanTicker } from './services/dataService';
-import { Holding, PortfolioSummary, MarketData } from './types';
+import { Holding, PortfolioSummary, MarketData, HoldingUser, HoldingPending } from './types';
 
 type SortConfig = { key: keyof Holding | 'rangeScore' | 'none', direction: 'asc' | 'desc' };
 
@@ -39,6 +39,14 @@ const Range52w = ({ price, low, high, thin = false, isDark = true }: { price: nu
   );
 };
 
+const findMarketEntry = (input: string, mData: MarketData | null) => {
+  if (!mData || !input) return null;
+  if (mData[input]) return { key: input, data: mData[input] };
+  const cleanInput = cleanTicker(input).toUpperCase();
+  const matchKey = Object.keys(mData).find((key) => cleanTicker(key).toUpperCase() === cleanInput);
+  return matchKey ? { key: matchKey, data: mData[matchKey] } : null;
+};
+
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -47,10 +55,19 @@ const App: React.FC = () => {
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'valueInEUR', direction: 'desc' });
   
-  const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [isSignup, setIsSignup] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [baseCurrency, setBaseCurrency] = useState('EUR');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null);
+  const [editHolding, setEditHolding] = useState<Holding | null>(null);
+  const [addForm, setAddForm] = useState({ ticker: '', shares: '', costPerShare: '' });
+  const [manualForm, setManualForm] = useState({ ticker: '', shares: '', costPerShare: '' });
+  const [addError, setAddError] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     if (typeof window === 'undefined') return 'dark';
     const stored = localStorage.getItem('ff-theme');
@@ -79,11 +96,137 @@ const App: React.FC = () => {
     else if (!loading) setLoading(false);
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('display_name, base_currency')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error cargando perfil:', error);
+          return;
+        }
+        if (data?.display_name) setDisplayName(data.display_name);
+        if (data?.base_currency) setBaseCurrency(data.base_currency.toUpperCase());
+      });
+  }, [user]);
+
+  const buildHoldingsFromHoldings = (entries: HoldingUser[], mData: MarketData, pendingMap: Map<string, HoldingPending>) => {
+    const byCleanTicker = new Map<string, { key: string, data: MarketData[string] }>();
+    Object.entries(mData).forEach(([key, data]) => {
+      const clean = cleanTicker(key).toUpperCase();
+      if (!byCleanTicker.has(clean)) byCleanTicker.set(clean, { key, data });
+    });
+
+    let totalCostBasisEUR = 0;
+    const holdings: Holding[] = entries.map((entry) => {
+      const inputTicker = entry.ticker.trim();
+      const cleanInput = cleanTicker(inputTicker).toUpperCase();
+      const match = mData[inputTicker] ? { key: inputTicker, data: mData[inputTicker] } : byCleanTicker.get(cleanInput);
+      const override = pendingMap.get(cleanInput);
+      const md = match?.data;
+      const rawTicker = match?.key || inputTicker;
+      const price = md?.price ?? override?.price ?? 0;
+      const fx = md?.fx ?? 1;
+      const shares = Number(entry.quantity) || 0;
+      const costPerShare = Number(entry.avg_price) || 0;
+      const valueInEUR = shares * price * fx;
+      const costBasisEUR = shares * costPerShare * fx;
+      totalCostBasisEUR += costBasisEUR;
+      const gainLoss = costBasisEUR > 0 ? ((valueInEUR - costBasisEUR) / costBasisEUR) * 100 : 0;
+      const yieldPct = md?.yieldPct ?? override?.yield_pct ?? 0;
+      const annualIncomeEUR = md?.income ?? (yieldPct / 100) * valueInEUR;
+
+      return {
+        id: `h-${entry.id}`,
+        sourceId: entry.id,
+        ticker: cleanTicker(rawTicker),
+        rawTicker,
+        name: md?.name || override?.name || inputTicker,
+        shares,
+        price,
+        costPerShare,
+        currency: entry.currency || override?.currency || md?.currency || 'EUR',
+        valueInEUR,
+        gainLoss,
+        yieldPct,
+        annualIncomeEUR,
+        per: md?.per ?? 'N/A',
+        yoc: costBasisEUR > 0 ? (annualIncomeEUR / costBasisEUR) * 100 : 0,
+        weight: 0,
+        dailyChange: md?.dailyChange ?? override?.daily_change ?? 0,
+        low52w: md?.low52w ?? override?.low52w ?? 0,
+        high52w: md?.high52w ?? override?.high52w ?? 0
+      };
+    });
+
+    const totalValue = holdings.reduce((sum, h) => sum + h.valueInEUR, 0);
+    const totalAnnualIncome = holdings.reduce((sum, h) => sum + h.annualIncomeEUR, 0);
+    holdings.forEach(h => {
+      h.weight = totalValue > 0 ? (h.valueInEUR / totalValue) * 100 : 0;
+    });
+
+    return {
+      holdings,
+      summary: {
+        totalValue,
+        totalAnnualIncome,
+        monthlyIncome: totalAnnualIncome / 12,
+        dividendYield: totalValue > 0 ? (totalAnnualIncome / totalValue) * 100 : 0,
+        yoc: totalCostBasisEUR > 0 ? (totalAnnualIncome / totalCostBasisEUR) * 100 : 0,
+        holdingsCount: holdings.length,
+        dailyChange: 0
+      }
+    };
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const { marketData: mData, holdings, summary } = await fetchAllData();
+      const { marketData: mData, holdings: sheetHoldings, summary: sheetSummary } = await fetchAllData();
       setMarketData(mData);
+
+      let holdings: Holding[] = [];
+      let summary: PortfolioSummary = {
+        totalValue: 0,
+        totalAnnualIncome: 0,
+        monthlyIncome: 0,
+        dividendYield: 0,
+        yoc: 0,
+        holdingsCount: 0,
+        dailyChange: 0
+      };
+
+      if (user) {
+        const [{ data: holdingsRows, error }, { data: pendingRows, error: pendingError }] = await Promise.all([
+          supabase.from('holdings').select('*').eq('user_id', user.id),
+          supabase.from('holdings_pending').select('*').eq('user_id', user.id)
+        ]);
+
+        if (error) {
+          console.error("Error cargando posiciones:", error);
+        } else if (holdingsRows && holdingsRows.length > 0) {
+          const pendingMap = new Map<string, HoldingPending>();
+          (pendingRows || []).forEach((row) => {
+            const clean = cleanTicker(row.ticker).toUpperCase();
+            pendingMap.set(clean, row as HoldingPending);
+          });
+          if (pendingError) {
+            console.error("Error cargando pendientes:", pendingError);
+          }
+          const built = buildHoldingsFromHoldings(holdingsRows as HoldingUser[], mData, pendingMap);
+          holdings = built.holdings;
+          summary = built.summary;
+        }
+      }
+
+      if (!user) {
+        holdings = sheetHoldings;
+        summary = sheetSummary;
+      }
+
       setPortfolio({ holdings, summary });
     } catch (err) {
       console.error("Error sincronizando con Sheets:", err);
@@ -95,8 +238,173 @@ const App: React.FC = () => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setAuthError('Error: Credenciales inválidas');
+    if (isSignup) {
+      const normalizedCurrency = baseCurrency.trim().toUpperCase();
+      if (!['EUR', 'USD', 'GBP'].includes(normalizedCurrency)) {
+        setAuthError('Divisa base inválida.');
+        return;
+      }
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        setAuthError('No se pudo crear la cuenta.');
+        return;
+      }
+      const userId = data.user?.id;
+      if (userId) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([{ user_id: userId, display_name: displayName.trim(), base_currency: normalizedCurrency }]);
+        if (profileError) {
+          console.error('Error guardando perfil:', profileError);
+          setAuthError('Cuenta creada, pero no se pudo guardar el perfil.');
+          return;
+        }
+      }
+      setAuthError('Cuenta creada correctamente.');
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) setAuthError('Error: Credenciales inválidas');
+    }
+  };
+
+  const handleAddPosition = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setAddError('');
+    const ticker = addForm.ticker.trim().toUpperCase();
+    const shares = Number(addForm.shares);
+    const costPerShare = Number(addForm.costPerShare);
+    const currency = baseCurrency.trim().toUpperCase() || 'EUR';
+    const marketMatch = findMarketEntry(ticker, marketData);
+
+    if (!ticker || !isFinite(shares) || shares <= 0 || !isFinite(costPerShare) || costPerShare <= 0) {
+      setAddError('Revisa ticker, acciones y precio de compra.');
+      return;
+    }
+
+    if (!marketMatch) {
+      setManualForm({ ticker, shares: addForm.shares, costPerShare: addForm.costPerShare });
+      setShowManualModal(true);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('holdings')
+      .insert([{ user_id: user.id, ticker, quantity: shares, avg_price: costPerShare, currency }]);
+
+    if (error) {
+      setAddError('No se pudo guardar la posición.');
+      console.error('Error guardando posición:', error);
+      return;
+    }
+
+    setShowAddModal(false);
+    setAddForm({ ticker: '', shares: '', costPerShare: '' });
+    loadData();
+  };
+
+  const handleManualSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setAddError('');
+    const ticker = manualForm.ticker.trim().toUpperCase();
+    const shares = Number(manualForm.shares);
+    const costPerShare = Number(manualForm.costPerShare);
+    const currency = baseCurrency.trim().toUpperCase() || 'EUR';
+
+    if (!ticker || !isFinite(shares) || shares <= 0 || !isFinite(costPerShare) || costPerShare <= 0) {
+      setAddError('Revisa ticker, acciones y precio de compra.');
+      return;
+    }
+
+    const { error: pendingError } = await supabase
+      .from('holdings_pending')
+      .insert([{
+        user_id: user.id,
+        ticker,
+        name: null,
+        currency,
+        price: costPerShare,
+        yield_pct: 0,
+        low52w: null,
+        high52w: null,
+        daily_change: 0
+      }]);
+
+    if (pendingError) {
+      setAddError('No se pudo guardar el ticker pendiente.');
+      console.error('Error guardando pendiente:', pendingError);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('holdings')
+      .insert([{ user_id: user.id, ticker, quantity: shares, avg_price: costPerShare, currency }]);
+
+    if (error) {
+      setAddError('No se pudo guardar la posición.');
+      console.error('Error guardando posición:', error);
+      return;
+    }
+
+    setShowManualModal(false);
+    setShowAddModal(false);
+    setManualForm({ ticker: '', shares: '', costPerShare: '' });
+    setAddForm({ ticker: '', shares: '', costPerShare: '' });
+    loadData();
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !editHolding?.sourceId) return;
+    const shares = Number(manualForm.shares);
+    const costPerShare = Number(manualForm.costPerShare);
+    if (!isFinite(shares) || shares <= 0 || !isFinite(costPerShare) || costPerShare <= 0) {
+      setAddError('Revisa acciones y precio de compra.');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('holdings')
+      .update({ quantity: shares, avg_price: costPerShare })
+      .eq('id', editHolding.sourceId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      setAddError('No se pudo actualizar la posición.');
+      console.error('Error actualizando posición:', error);
+      return;
+    }
+
+    await supabase
+      .from('holdings_pending')
+      .update({ price: costPerShare })
+      .eq('user_id', user.id)
+      .eq('ticker', editHolding.rawTicker);
+
+    setEditHolding(null);
+    setManualForm({ ticker: '', shares: '', costPerShare: '' });
+    loadData();
+  };
+
+  const handleDeleteHolding = async (holding: Holding) => {
+    if (!user || !holding.sourceId) return;
+    if (!window.confirm(`Eliminar ${holding.ticker}?`)) return;
+    const { error } = await supabase
+      .from('holdings')
+      .delete()
+      .eq('id', holding.sourceId)
+      .eq('user_id', user.id);
+    if (error) {
+      console.error('Error eliminando posición:', error);
+      return;
+    }
+    await supabase
+      .from('holdings_pending')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('ticker', holding.rawTicker);
+    loadData();
   };
 
   const sortedHoldings = useMemo(() => {
@@ -138,6 +446,7 @@ const App: React.FC = () => {
       .slice(0, 10);
 
     const byLoss = [...portfolio.holdings]
+      .filter((h) => h.gainLoss < 0)
       .sort((a, b) => a.gainLoss - b.gainLoss)
       .slice(0, 10);
 
@@ -180,6 +489,17 @@ const App: React.FC = () => {
   const gainPositiveClass = isDark ? 'bg-green-900/40 text-green-400' : 'bg-green-50 text-green-600';
   const gainNegativeClass = isDark ? 'bg-red-900/40 text-red-500' : 'bg-red-50 text-red-500';
   const hoverBorderClass = isDark ? 'hover:border-slate-800' : 'hover:border-slate-200';
+  const tickerOptions = useMemo(() => {
+    if (!marketData) return [];
+    const map = new Map<string, string>();
+    Object.entries(marketData).forEach(([key, data]) => {
+      const ticker = cleanTicker(key).toUpperCase();
+      if (!map.has(ticker)) map.set(ticker, data.name || ticker);
+    });
+    return Array.from(map.entries())
+      .map(([ticker, name]) => ({ ticker, name }))
+      .sort((a, b) => a.ticker.localeCompare(b.ticker));
+  }, [marketData]);
 
   if (loading && user) return (
     <div className={`flex h-screen items-center justify-center ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
@@ -192,76 +512,86 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${pageClass} font-sans pb-24 md:pb-10`}>
-      <header className={`sticky top-0 z-40 shadow-2xl border-b ${isDark ? 'bg-slate-900 text-white border-slate-800' : 'bg-white text-slate-900 border-slate-200'}`}>
-        <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Logo className="w-10 h-10" />
-            <div className="flex flex-col">
-              <span className="text-xl font-black tracking-tighter uppercase leading-none">FinanceFlow <span className="text-teal-400">DGI</span></span>
-              <span className="text-xs font-bold text-teal-500 uppercase tracking-widest mt-1 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></span> Terminal v2.5
-              </span>
+      {user && (
+        <header className={`sticky top-0 z-40 shadow-2xl border-b ${isDark ? 'bg-slate-900 text-white border-slate-800' : 'bg-white text-slate-900 border-slate-200'}`}>
+          <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Logo className="w-10 h-10" />
+              <div className="flex flex-col">
+                <span className="text-xl font-black tracking-tighter uppercase leading-none">FinanceFlow <span className="text-teal-400">DGI</span></span>
+                <span className="text-xs font-bold text-teal-500 uppercase tracking-widest mt-1 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></span> Terminal v2.5
+                </span>
+              </div>
             </div>
-          </div>
-          
-          <nav className="hidden md:flex items-center gap-12 text-sm font-black uppercase tracking-[0.2em]">
-            <button onClick={() => setActiveTab('portfolio')} className={`transition-all pb-1 border-b-2 ${activeTab === 'portfolio' ? 'text-teal-400 border-teal-400' : navIdleClass}`}>Cartera</button>
-            <button onClick={() => setActiveTab('screener')} className={`transition-all pb-1 border-b-2 ${activeTab === 'screener' ? 'text-teal-400 border-teal-400' : navIdleClass}`}>Screener</button>
-          </nav>
+            
+            <nav className="hidden md:flex items-center gap-12 text-sm font-black uppercase tracking-[0.2em]">
+              <button onClick={() => setActiveTab('portfolio')} className={`transition-all pb-1 border-b-2 ${activeTab === 'portfolio' ? 'text-teal-400 border-teal-400' : navIdleClass}`}>Cartera</button>
+              <button onClick={() => setActiveTab('screener')} className={`transition-all pb-1 border-b-2 ${activeTab === 'screener' ? 'text-teal-400 border-teal-400' : navIdleClass}`}>Screener</button>
+            </nav>
 
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl border font-black text-xs uppercase tracking-widest transition shadow-lg ${isDark ? 'bg-slate-800 border-slate-700 text-teal-300 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-teal-600 hover:bg-slate-200'}`}
-              title="Cambiar tema"
-            >
-              <span className="text-base leading-none">{isDark ? '☀️' : '🌙'}</span>
-              <span className="hidden md:inline">{isDark ? 'Claro' : 'Oscuro'}</span>
-            </button>
-            {user ? (
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border font-black text-xs uppercase tracking-widest transition shadow-lg ${isDark ? 'bg-slate-800 border-slate-700 text-teal-300 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-teal-600 hover:bg-slate-200'}`}
+                title="Cambiar tema"
+              >
+                <span className="text-base leading-none">{isDark ? '☀️' : '🌙'}</span>
+                <span className="hidden md:inline">{isDark ? 'Claro' : 'Oscuro'}</span>
+              </button>
               <div className="flex items-center gap-3">
                 <button onClick={loadData} className={`p-2.5 rounded-xl transition shadow-lg border active:scale-90 ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-teal-400 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-teal-600 border-slate-200'}`} title="Refrescar desde Sheets">
                   <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                 </button>
                 <button onClick={() => supabase.auth.signOut()} className={`hidden md:block text-xs font-black ${headerMutedText} hover:text-red-400 uppercase tracking-widest transition`}>Cerrar Sesión</button>
               </div>
-            ) : (
-              <button onClick={() => setShowLogin(true)} className="bg-teal-500 text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-teal-400 transition shadow-lg shadow-teal-900/20">Acceder</button>
-            )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
         {!user ? (
           <div className="max-w-md mx-auto mt-12 text-center">
-            {showLogin ? (
-              <div className={`rounded-[2.5rem] shadow-2xl p-10 border animate-in zoom-in-95 ${surfaceClass}`}>
-                <h2 className={`text-3xl font-black mb-8 tracking-tight ${primaryText}`}>Acceso Cartera</h2>
-                <form onSubmit={handleAuth} className="space-y-5">
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={`w-full border-0 rounded-2xl px-6 py-4 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`} placeholder="Email" required />
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} className={`w-full border-0 rounded-2xl px-6 py-4 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`} placeholder="Password" required />
-                  {authError && <p className="text-red-500 text-xs font-bold">{authError}</p>}
-                  <button type="submit" className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl active:scale-95">Entrar</button>
-                </form>
+            <div className={`rounded-[2.5rem] shadow-2xl p-10 border animate-in zoom-in-95 ${surfaceClass}`}>
+              <div className="flex flex-col items-center mb-8">
+                <Logo className="w-16 h-16 mb-4" />
+                <h2 className={`text-3xl font-black tracking-tight ${primaryText}`}>{isSignup ? 'Crear Cuenta' : 'Acceso Cartera'}</h2>
+                <p className={`text-xs uppercase tracking-[0.35em] mt-2 ${mutedText}`}>FinanceFlow DGI</p>
               </div>
-            ) : (
-              <div className={`rounded-[3rem] shadow-2xl p-12 border animate-in fade-in slide-in-from-bottom-8 ${surfaceClass}`}>
-                <Logo className="w-24 h-24 mx-auto mb-10" />
-                <h2 className={`text-4xl font-black mb-2 tracking-tighter uppercase ${primaryText}`}>DGI Monitor</h2>
-                <p className={`font-bold text-sm uppercase tracking-widest mb-10 ${mutedText}`}>Visualizador de Activos de Dividendos</p>
-                <button onClick={() => setShowLogin(true)} className="w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black text-xl hover:bg-black transition-all shadow-2xl active:scale-95">Conectar Cartera</button>
+              <form onSubmit={handleAuth} className="space-y-5">
+                {isSignup && (
+                  <>
+                    <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} className={`w-full border-0 rounded-2xl px-6 py-4 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`} placeholder="Nombre" required />
+                    <select value={baseCurrency} onChange={e => setBaseCurrency(e.target.value)} className={`w-full border-0 rounded-2xl px-6 py-4 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100' : 'bg-slate-50 text-slate-900'}`} required>
+                      <option value="EUR">EUR</option>
+                      <option value="USD">USD</option>
+                      <option value="GBP">GBP</option>
+                    </select>
+                  </>
+                )}
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={`w-full border-0 rounded-2xl px-6 py-4 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`} placeholder="Email" required />
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} className={`w-full border-0 rounded-2xl px-6 py-4 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`} placeholder="Password" required />
+                {authError && <p className={`${authError.startsWith('Cuenta creada') ? 'text-emerald-400' : 'text-red-500'} text-sm font-bold`}>{authError}</p>}
+                <button type="submit" className="w-full bg-teal-500 text-slate-900 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-teal-400 transition-all shadow-xl active:scale-95">
+                  {isSignup ? 'Crear Cuenta' : 'Entrar'}
+                </button>
+              </form>
+              <div className="mt-6 text-sm font-bold">
+                <button onClick={() => { setIsSignup(!isSignup); setAuthError(''); }} className={`uppercase tracking-widest ${mutedText}`}>
+                  {isSignup ? 'Ya tengo cuenta' : 'Crear cuenta nueva'}
+                </button>
               </div>
-            )}
+            </div>
           </div>
         ) : (
           <>
             {activeTab === 'portfolio' && (
               <>
                 <div className="mb-6 md:mb-8 animate-in fade-in slide-in-from-top-4">
-                  <div className={`text-xs md:text-sm font-black uppercase tracking-[0.35em] ${mutedText}`}>Cartera Total</div>
+                  <div className={`text-xs md:text-sm font-black uppercase tracking-[0.35em] ${mutedText}`}>Bienvenido, {displayName || user?.email}</div>
                   <div className="text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-teal-400 via-cyan-300 to-amber-300 text-transparent bg-clip-text">
-                    Resumen Ejecutivo
+                    Dashboard DGI · {baseCurrency}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10 animate-in fade-in slide-in-from-top-4">
@@ -302,7 +632,15 @@ const App: React.FC = () => {
               <div className={`rounded-[2.5rem] shadow-sm border overflow-hidden mb-12 ${surfaceClass}`}>
                 <div className={`px-8 py-6 border-b flex justify-between items-center ${surfaceSoftClass}`}>
                   <h3 className={`font-black text-xs uppercase tracking-[0.3em] ${tableTitleClass}`}>Monitor de Activos en Tiempo Real</h3>
-                  <span className={`text-sm font-bold px-3 py-1 rounded-full border ${sheetBadgeClass}`}>Sheets Direct Link</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      className={`px-4 py-2 rounded-full font-black text-xs uppercase tracking-widest transition border ${isDark ? 'bg-teal-500 text-slate-900 border-teal-400 hover:bg-teal-400' : 'bg-teal-600 text-white border-teal-600 hover:bg-teal-500'}`}
+                    >
+                      Añadir
+                    </button>
+                    <span className={`text-sm font-bold px-3 py-1 rounded-full border ${sheetBadgeClass}`}>Sheets Direct Link</span>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
@@ -316,15 +654,18 @@ const App: React.FC = () => {
                         <th className="px-6 py-6 cursor-pointer hover:text-teal-600 transition-colors text-center" onClick={() => requestSort('yieldPct')}>Yield %</th>
                         <th className="px-6 py-6 cursor-pointer hover:text-teal-600 transition-colors text-center" onClick={() => requestSort('yoc')}>YoC %</th>
                         <th className="px-6 py-6 cursor-pointer hover:text-teal-600 transition-colors" onClick={() => requestSort('annualIncomeEUR')}>Renta Año</th>
-                        <th className="px-6 py-6 cursor-pointer hover:text-teal-600 transition-colors text-right" onClick={() => requestSort('dailyChange')}>24H %</th>
+                        <th className="px-6 py-6 cursor-pointer hover:text-teal-600 transition-colors text-right" onClick={() => requestSort('dailyChange')}>Día %</th>
+                        <th className="px-6 py-6 text-right">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${dividerClass}`}>
                       {sortedHoldings.map((h) => (
                         <tr key={h.id} className={`group transition-all duration-300 ${rowHoverClass}`}>
                           <td className="px-6 py-5">
-                            <div className={`font-black text-xl leading-tight ${primaryText}`}>{h.ticker}</div>
-                            <div className={`text-sm font-bold uppercase mt-1 tracking-wider truncate max-w-[150px] ${mutedText}`}>{h.name}</div>
+                            <button onClick={() => setSelectedHolding(h)} className="text-left">
+                              <div className={`font-black text-xl leading-tight ${primaryText}`}>{h.ticker}</div>
+                              <div className={`text-sm font-bold uppercase mt-1 tracking-wider truncate max-w-[150px] ${mutedText}`}>{h.name}</div>
+                            </button>
                           </td>
                           <td className={`px-6 py-5 font-bold text-center text-lg ${mutedTextStrong}`}>{h.shares}</td>
                           <td className={`px-6 py-5 font-black whitespace-nowrap text-lg ${primaryText}`}>{formatCurrency(h.valueInEUR)}</td>
@@ -343,6 +684,25 @@ const App: React.FC = () => {
                             <span className={`text-base font-black ${h.dailyChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                               {h.dailyChange >= 0 ? '+' : ''}{h.dailyChange.toFixed(2)}%
                             </span>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditHolding(h);
+                                  setManualForm({ ticker: h.rawTicker, shares: String(h.shares), costPerShare: String(h.costPerShare) });
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest border ${isDark ? 'text-teal-300 border-slate-700 hover:bg-slate-800' : 'text-teal-600 border-slate-200 hover:bg-slate-100'}`}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteHolding(h)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest border ${isDark ? 'text-red-300 border-slate-700 hover:bg-slate-800' : 'text-red-500 border-slate-200 hover:bg-slate-100'}`}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -444,6 +804,223 @@ const App: React.FC = () => {
         )}
       </main>
 
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className={`w-full max-w-lg rounded-[2rem] border p-8 shadow-2xl ${surfaceClass}`}>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <div className={`text-xl font-black ${primaryText}`}>Añadir posición</div>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Manual</div>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className={`text-xs font-black uppercase tracking-widest ${mutedText}`}>Cerrar</button>
+            </div>
+            <form onSubmit={handleAddPosition} className="space-y-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={addForm.ticker}
+                  onChange={e => setAddForm({ ...addForm, ticker: e.target.value.toUpperCase() })}
+                  className={`w-full border-0 rounded-2xl px-5 py-3 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`}
+                  placeholder="Ticker (ej: O, MSFT)"
+                  required
+                />
+                {addForm.ticker && tickerOptions.length > 0 && !findMarketEntry(addForm.ticker, marketData) && (
+                  <div className={`absolute z-10 mt-2 w-full max-h-48 overflow-auto rounded-2xl border shadow-xl ${surfaceClass}`}>
+                    {tickerOptions
+                      .filter(({ ticker, name }) => {
+                        const query = addForm.ticker.toUpperCase();
+                        return ticker.includes(query) || name.toUpperCase().includes(query);
+                      })
+                      .slice(0, 8)
+                      .map(({ ticker, name }) => (
+                        <button
+                          key={ticker}
+                          type="button"
+                          onClick={() => setAddForm({ ...addForm, ticker })}
+                          className={`w-full text-left px-4 py-2 font-bold text-sm transition ${isDark ? 'hover:bg-slate-800 text-slate-100' : 'hover:bg-slate-100 text-slate-900'}`}
+                        >
+                          <span className="mr-2">{ticker}</span>
+                          <span className={`text-xs ${mutedText}`}>{name}</span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={addForm.shares}
+                  onChange={e => setAddForm({ ...addForm, shares: e.target.value })}
+                  className={`w-full border-0 rounded-2xl px-5 py-3 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`}
+                  placeholder="Acciones"
+                  required
+                />
+                <input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={addForm.costPerShare}
+                  onChange={e => setAddForm({ ...addForm, costPerShare: e.target.value })}
+                  className={`w-full border-0 rounded-2xl px-5 py-3 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`}
+                  placeholder="Precio compra"
+                  required
+                />
+              </div>
+              {addError && <p className="text-red-500 text-sm font-bold">{addError}</p>}
+              <button type="submit" className="w-full bg-teal-500 text-slate-900 py-3 rounded-2xl font-black uppercase tracking-widest hover:bg-teal-400 transition-all shadow-xl active:scale-95">Guardar</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showManualModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className={`w-full max-w-lg rounded-[2rem] border p-8 shadow-2xl ${surfaceClass}`}>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <div className={`text-xl font-black ${primaryText}`}>Ticker no encontrado</div>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Introduce los datos manualmente</div>
+              </div>
+              <button onClick={() => setShowManualModal(false)} className={`text-xs font-black uppercase tracking-widest ${mutedText}`}>Cerrar</button>
+            </div>
+            <form onSubmit={handleManualSave} className="space-y-4">
+              <input
+                type="text"
+                value={manualForm.ticker}
+                onChange={e => setManualForm({ ...manualForm, ticker: e.target.value.toUpperCase() })}
+                className={`w-full border-0 rounded-2xl px-5 py-3 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`}
+                placeholder="Ticker"
+                required
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={manualForm.shares}
+                  onChange={e => setManualForm({ ...manualForm, shares: e.target.value })}
+                  className={`w-full border-0 rounded-2xl px-5 py-3 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`}
+                  placeholder="Acciones"
+                  required
+                />
+                <input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={manualForm.costPerShare}
+                  onChange={e => setManualForm({ ...manualForm, costPerShare: e.target.value })}
+                  className={`w-full border-0 rounded-2xl px-5 py-3 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`}
+                  placeholder="Precio compra"
+                  required
+                />
+              </div>
+              {addError && <p className="text-red-500 text-sm font-bold">{addError}</p>}
+              <button type="submit" className="w-full bg-teal-500 text-slate-900 py-3 rounded-2xl font-black uppercase tracking-widest hover:bg-teal-400 transition-all shadow-xl active:scale-95">Guardar</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editHolding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className={`w-full max-w-lg rounded-[2rem] border p-8 shadow-2xl ${surfaceClass}`}>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <div className={`text-xl font-black ${primaryText}`}>Editar posición</div>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>{editHolding.ticker}</div>
+              </div>
+              <button onClick={() => setEditHolding(null)} className={`text-xs font-black uppercase tracking-widest ${mutedText}`}>Cerrar</button>
+            </div>
+            <form onSubmit={handleEditSave} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={manualForm.shares}
+                  onChange={e => setManualForm({ ...manualForm, shares: e.target.value })}
+                  className={`w-full border-0 rounded-2xl px-5 py-3 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`}
+                  placeholder="Acciones"
+                  required
+                />
+                <input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={manualForm.costPerShare}
+                  onChange={e => setManualForm({ ...manualForm, costPerShare: e.target.value })}
+                  className={`w-full border-0 rounded-2xl px-5 py-3 text-lg font-bold focus:ring-2 focus:ring-teal-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-400' : 'bg-slate-50 text-slate-900 placeholder-slate-500'}`}
+                  placeholder="Precio compra"
+                  required
+                />
+              </div>
+              {addError && <p className="text-red-500 text-sm font-bold">{addError}</p>}
+              <button type="submit" className="w-full bg-teal-500 text-slate-900 py-3 rounded-2xl font-black uppercase tracking-widest hover:bg-teal-400 transition-all shadow-xl active:scale-95">Guardar cambios</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {selectedHolding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className={`w-full max-w-2xl rounded-[2rem] border p-8 shadow-2xl ${surfaceClass}`}>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <div className={`text-2xl font-black ${primaryText}`}>{selectedHolding.ticker}</div>
+                <div className={`text-sm uppercase tracking-widest ${mutedText}`}>{selectedHolding.name}</div>
+              </div>
+              <button onClick={() => setSelectedHolding(null)} className={`text-xs font-black uppercase tracking-widest ${mutedText}`}>Cerrar</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className={`rounded-2xl border p-4 ${surfaceSoftClass}`}>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Acciones</div>
+                <div className={`text-xl font-black ${primaryText}`}>{selectedHolding.shares}</div>
+              </div>
+              <div className={`rounded-2xl border p-4 ${surfaceSoftClass}`}>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Valor</div>
+                <div className={`text-xl font-black ${primaryText}`}>{formatCurrency(selectedHolding.valueInEUR)}</div>
+              </div>
+              <div className={`rounded-2xl border p-4 ${surfaceSoftClass}`}>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Precio</div>
+                <div className={`text-xl font-black ${primaryText}`}>{selectedHolding.price.toFixed(2)}</div>
+              </div>
+              <div className={`rounded-2xl border p-4 ${surfaceSoftClass}`}>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Rentabilidad</div>
+                <div className={`text-xl font-black ${primaryText}`}>{selectedHolding.gainLoss.toFixed(2)}%</div>
+              </div>
+              <div className={`rounded-2xl border p-4 ${surfaceSoftClass}`}>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Yield</div>
+                <div className="text-xl font-black text-teal-400">{selectedHolding.yieldPct.toFixed(2)}%</div>
+              </div>
+              <div className={`rounded-2xl border p-4 ${surfaceSoftClass}`}>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>YoC</div>
+                <div className="text-xl font-black text-amber-400">{selectedHolding.yoc.toFixed(2)}%</div>
+              </div>
+              <div className={`rounded-2xl border p-4 ${surfaceSoftClass}`}>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Renta Año</div>
+                <div className={`text-xl font-black ${primaryText}`}>{formatCurrency(selectedHolding.annualIncomeEUR)}</div>
+              </div>
+              <div className={`rounded-2xl border p-4 ${surfaceSoftClass}`}>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Día %</div>
+                <div className={`text-xl font-black ${selectedHolding.dailyChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {selectedHolding.dailyChange >= 0 ? '+' : ''}{selectedHolding.dailyChange.toFixed(2)}%
+                </div>
+              </div>
+              <div className={`rounded-2xl border p-4 ${surfaceSoftClass}`}>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Rango 52S</div>
+                <Range52w price={selectedHolding.price} low={selectedHolding.low52w} high={selectedHolding.high52w} isDark={isDark} />
+              </div>
+              <div className={`rounded-2xl border p-4 ${surfaceSoftClass}`}>
+                <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Peso</div>
+                <div className={`text-xl font-black ${primaryText}`}>{selectedHolding.weight.toFixed(2)}%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {user && (
         <footer className={`fixed bottom-0 inset-x-0 border-t md:hidden z-50 safe-bottom shadow-[0_-10px_30px_rgba(0,0,0,0.3)] ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
           <div className="flex items-center justify-around h-20">
@@ -472,6 +1049,14 @@ const App: React.FC = () => {
           </div>
         </footer>
       )}
+
+      <div className="mt-12 border-t border-slate-800/60">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 text-center">
+          <div className={`text-xs uppercase tracking-widest ${mutedText}`}>Soporte</div>
+          <div className={`text-sm font-black ${primaryText}`}>Adrian Lujan · Desarrollador</div>
+          <div className={`text-sm ${mutedText}`}>a.adrianlujan.l@gmail.com</div>
+        </div>
+      </div>
     </div>
   );
 };
