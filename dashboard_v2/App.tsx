@@ -556,8 +556,8 @@ const App: React.FC = () => {
             <div className={`rounded-[2.5rem] shadow-2xl p-10 border animate-in zoom-in-95 ${surfaceClass}`}>
               <div className="flex flex-col items-center mb-8">
                 <Logo className="w-16 h-16 mb-4" />
-                <h2 className={`text-3xl font-black tracking-tight ${primaryText}`}>{isSignup ? 'Crear Cuenta' : 'Acceso Cartera'}</h2>
-                <p className={`text-xs uppercase tracking-[0.35em] mt-2 ${mutedText}`}>FinanceFlow DGI</p>
+                <h2 className={`text-3xl font-black tracking-tight ${primaryText}`}>{isSignup ? 'Crear Cuenta' : 'FinanceFlow'}</h2>
+                <p className={`text-xs uppercase tracking-[0.35em] mt-2 ${mutedText}`}>Dashboard DGI</p>
               </div>
               <form onSubmit={handleAuth} className="space-y-5">
                 {isSignup && (
