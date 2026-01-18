@@ -107,8 +107,11 @@
   padding: 0;
 }
 
-html {
+html,
+body {
   scroll-behavior: smooth;
+  overflow-x: hidden;
+  /* Prevent horizontal scroll */
 }
 
 body {
@@ -125,7 +128,7 @@ body {
    =================================== */
 .header {
   background: var(--teal-dark);
-  padding: var(--spacing-md) var(--spacing-xl);
+  padding: var(--spacing-md) var(--spacing-md);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -138,7 +141,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-xl);
+  gap: var(--spacing-md);
+}
+
+@media (max-width: 900px) {
+  .nav {
+    display: none;
+    /* Hide main nav on mobile */
+  }
 }
 
 .logo {
@@ -277,7 +287,25 @@ body {
 .main {
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  overflow-x: hidden;
+}
+
+@media (max-width: 600px) {
+  .header-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex: 1;
+  }
+
+  .search-input {
+    display: none;
+  }
+
+  .mobile-hide {
+    display: none !important;
+  }
 }
 
 /* Portfolio Header */
@@ -711,15 +739,19 @@ body {
   padding: var(--spacing-sm) var(--spacing-md);
   border: 1px solid var(--border-medium);
   background: var(--surface-white);
+  color: var(--text-primary);
+  /* Ensure contrast in dark mode */
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .btn:hover {
   background: var(--beige-light);
+  color: var(--text-primary);
 }
 
 .btn-add {
@@ -1197,7 +1229,9 @@ body {
 .mobile-nav-container {
   display: flex;
   justify-content: space-around;
-  padding: 12px 0;
+  padding: 10px 0;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
 .mobile-nav-item {
@@ -1210,6 +1244,8 @@ body {
   gap: 4px;
   flex: 1;
   transition: color 0.2s;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .mobile-nav-item:hover {
@@ -1233,6 +1269,6 @@ body {
 
   /* Add padding to body so content isn't hidden behind nav */
   body {
-    padding-bottom: 80px;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
   }
 }

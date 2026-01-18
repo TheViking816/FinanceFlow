@@ -7,6 +7,10 @@
   'use strict';
 
   const {
+    getUser,
+    signIn,
+    signUp,
+    signOut,
     fetchData,
     addPosition,
     updatePosition,
@@ -166,7 +170,7 @@
                             <span class="price-value">${formatCurrency(h.price, h.currency)}</span>
                         </div>
                     </td>
-                    <td>${h.weight ? h.weight.toFixed(2) : '0.00'}%</td>
+                    <td class="mobile-hide">${h.weight ? h.weight.toFixed(2) : '0.00'}%</td>
                     <td>
                         <div>
                             <strong>${formatCurrency(h.valueInEUR, 'EUR')}</strong>
@@ -180,13 +184,13 @@
                             <span class="yield-value">${h.yieldPct ? h.yieldPct.toFixed(2) + '%' : '-'}</span>
                         </div>
                     </td>
-                    <td>
+                    <td class="mobile-hide">
                        ${h.yoc ? h.yoc.toFixed(2) + '%' : '-'}
                     </td>
-                    <td>
+                    <td class="mobile-hide">
                        ${h.per || '-'}
                     </td>
-                    <td>
+                    <td class="mobile-hide">
                        ${h.dividendSafetyScore || '-'}
                     </td>
                 </tr>
@@ -291,6 +295,27 @@
       };
     } else {
       console.error('Add Button NOT found during setup');
+    }
+
+    // Import/Sync Button
+    const btnImport = document.querySelector('.btn-import');
+    if (btnImport) {
+      btnImport.onclick = async (e) => {
+        e.preventDefault();
+        if (confirm('¿Sincronizar cartera con Google Sheets? Esto reemplazará los datos actuales en Supabase.')) {
+          setLoadingState(true);
+          try {
+            const res = await DataModule.syncFromCSV();
+            if (res.error) throw new Error(res.error);
+            alert('Sincronización completada con éxito.');
+            await loadData(true);
+          } catch (err) {
+            alert('Error en la sincronización: ' + err.message);
+          } finally {
+            setLoadingState(false);
+          }
+        }
+      };
     }
 
     // Event Delegation for Table Actions (Edit/Delete/Row Click)
@@ -435,8 +460,16 @@
       if (!portfolioData) setLoadingState(true); // Initial load only
 
       portfolioData = await fetchData(force);
-      renderSummary(portfolioData);
-      filterAndRender(); // Initial Render
+
+      const user = await getUser();
+      updateAuthButton(user);
+
+      if (user) {
+        renderSummary(portfolioData);
+        filterAndRender();
+      } else {
+        showLoginMessage();
+      }
       console.log('App Loaded. Data:', portfolioData);
 
     } catch (error) {
@@ -455,6 +488,128 @@
       setLoadingState(false);
     }
   }
+
+  // --- Auth Handlers ---
+  let authMode = 'login'; // 'login' or 'signup'
+
+  const openAuthModal = () => {
+    elements.authModal.style.display = 'block';
+    authMode = 'login';
+    updateAuthUI();
+  };
+
+  const closeAuthModal = () => {
+    elements.authModal.style.display = 'none';
+    elements.authError.style.display = 'none';
+  };
+
+  const toggleAuthMode = () => {
+    authMode = authMode === 'login' ? 'signup' : 'login';
+    updateAuthUI();
+  };
+
+  const updateAuthUI = () => {
+    const title = document.getElementById('auth-title');
+    const switchText = document.getElementById('auth-switch-text');
+    const switchBtn = document.getElementById('auth-switch-btn');
+    const signupExtra = document.getElementById('signup-extra');
+
+    if (authMode === 'login') {
+      title.textContent = 'Login';
+      switchText.textContent = 'No account?';
+      switchBtn.textContent = 'Sign up';
+      signupExtra.style.display = 'none';
+    } else {
+      title.textContent = 'Sign Up';
+      switchText.textContent = 'Have an account?';
+      switchBtn.textContent = 'Login';
+      signupExtra.style.display = 'block';
+    }
+  };
+
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault(); // Prevent default form submission
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+    const errorEl = document.getElementById('auth-error');
+    errorEl.style.display = 'none';
+
+    try {
+      if (authMode === 'login') {
+        const { error } = await signIn(email, password);
+        if (error) throw error;
+      } else {
+        const confirm = document.getElementById('auth-password-confirm').value;
+        if (password !== confirm) throw new Error('Passwords do not match');
+        const { error } = await signUp(email, password);
+        if (error) throw error;
+        alert('Verification email sent or account created. Please sign in.');
+        authMode = 'login';
+        updateAuthUI();
+        return;
+      }
+      closeAuthModal();
+      loadData(true);
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = 'block';
+    }
+  };
+
+  const updateAuthButton = (user) => {
+    const authBtn = document.getElementById('auth-btn');
+    if (!authBtn) return;
+    if (user) {
+      authBtn.textContent = 'Logout';
+      authBtn.onclick = async () => {
+        await signOut();
+        loadData(true);
+      };
+    } else {
+      authBtn.textContent = 'Login';
+      authBtn.onclick = openAuthModal;
+    }
+  };
+
+  const showLoginMessage = () => {
+    if (elements.holdingsBody) {
+      elements.holdingsBody.innerHTML = `
+        <tr>
+          <td colspan="10" style="padding: 100px 0; text-align: center; color: var(--text-secondary);">
+            <div style="font-size: 2rem; margin-bottom: 20px;">🔒</div>
+            <p>Please log in to see your portfolio</p>
+            <button class="btn btn-primary" onclick="app.openAuthModal()" style="margin-top: 20px;">Login Now</button>
+          </td>
+        </tr>
+      `;
+    }
+  };
+
+  // Expose to window for inline onclicks
+  window.app = {
+    openDetail: (id) => {
+      const h = portfolioData.holdings.find(item => item.id === id);
+      if (h) renderDetail(h);
+    },
+    openEdit: (id) => { // Renamed from openEditModal to match original app.openEdit
+      const h = portfolioData.holdings.find(item => item.id === id);
+      if (h) openPositionModal(h);
+    },
+    confirmDelete: (id) => { // Renamed from openDeleteModal to match original app.confirmDelete
+      const h = portfolioData.holdings.find(item => item.id === id);
+      if (h) openDeleteModal(h);
+    },
+    closeModal: () => { // This is a generic close, specific modals should be closed by their own functions
+      elements.modalPosition.style.display = 'none';
+      elements.modalDelete.style.display = 'none';
+      elements.modalDetail.style.display = 'none';
+      closeAuthModal(); // Ensure auth modal is closed too
+    },
+    closeAuthModal,
+    openAuthModal,
+    handleAuthSubmit,
+    toggleAuthMode
+  };
 
   // Init Logic
   const init = async () => {
@@ -476,6 +631,9 @@
     elements.modalPosition = document.getElementById('modal-position');
     elements.modalDelete = document.getElementById('modal-delete');
     elements.modalDetail = document.getElementById('modal-detail');
+    elements.authModal = document.getElementById('auth-modal'); // New auth modal element
+    elements.authError = document.getElementById('auth-error'); // New auth error element
+    elements.authForm = document.getElementById('auth-form'); // New auth form element
 
     // Forms & Buttons
     elements.formPosition = document.getElementById('form-position');
@@ -491,28 +649,28 @@
     const currentTheme = localStorage.getItem('theme');
     if (currentTheme === 'dark' || (!currentTheme && prefersDarkScheme.matches)) {
       document.body.setAttribute('data-theme', 'dark');
-      themeToggle.textContent = '☀️';
+      if (themeToggle) themeToggle.textContent = '☀️';
     } else {
       document.body.removeAttribute('data-theme');
-      themeToggle.textContent = '🌙';
+      if (themeToggle) themeToggle.textContent = '🌙';
     }
 
-    themeToggle.addEventListener('click', () => {
-      let theme = document.body.getAttribute('data-theme');
-      if (theme === 'dark') {
-        document.body.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'light');
-        themeToggle.textContent = '🌙';
-      } else {
-        document.body.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
-        themeToggle.textContent = '☀️';
-      }
-    });
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        let theme = document.body.getAttribute('data-theme');
+        if (theme === 'dark') {
+          document.body.removeAttribute('data-theme');
+          localStorage.setItem('theme', 'light');
+          themeToggle.textContent = '🌙';
+        } else {
+          document.body.setAttribute('data-theme', 'dark');
+          localStorage.setItem('theme', 'dark');
+          themeToggle.textContent = '☀️';
+        }
+      });
+    }
 
     await loadData();
-    // Re-setup listener for add button in case DOM re-render messed it up (though it shouldn't)
-    setupAddButton();
   };
 
   if (document.readyState === 'loading') {

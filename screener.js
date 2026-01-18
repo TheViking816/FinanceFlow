@@ -6,7 +6,15 @@
 (async function () {
     'use strict';
 
-    const { fetchData, formatCurrency, formatPercent } = DataModule;
+    const {
+        getUser,
+        signIn,
+        signUp,
+        signOut,
+        fetchData,
+        formatCurrency,
+        formatPercent
+    } = DataModule;
 
     const tables = {
         yield: document.getElementById('table-yield'),
@@ -18,6 +26,14 @@
     async function loadScreener() {
         try {
             const data = await fetchData();
+            const user = await getUser();
+            updateAuthButton(user);
+
+            if (!user) {
+                showLoginMessage();
+                return;
+            }
+
             const holdings = data.holdings;
 
             renderHighestYield(holdings);
@@ -113,6 +129,109 @@
             h => `<span class="rank-down">${formatCurrency(h.profitLossEUR, 'EUR')}</span>`
         ]);
     }
+
+    // --- Auth Logic ---
+    let authMode = 'login';
+    const authModal = document.getElementById('auth-modal');
+    const authError = document.getElementById('auth-error');
+
+    const openAuthModal = () => {
+        authModal.style.display = 'block';
+        authMode = 'login';
+        updateAuthUI();
+    };
+
+    const closeAuthModal = () => {
+        authModal.style.display = 'none';
+        authError.style.display = 'none';
+    };
+
+    const toggleAuthMode = () => {
+        authMode = authMode === 'login' ? 'signup' : 'login';
+        updateAuthUI();
+    };
+
+    const updateAuthUI = () => {
+        const title = document.getElementById('auth-title');
+        const switchText = document.getElementById('auth-switch-text');
+        const switchBtn = document.getElementById('auth-switch-btn');
+        const signupExtra = document.getElementById('signup-extra');
+
+        if (authMode === 'login') {
+            title.textContent = 'Login';
+            switchText.textContent = 'No account?';
+            switchBtn.textContent = 'Sign up';
+            signupExtra.style.display = 'none';
+        } else {
+            title.textContent = 'Sign Up';
+            switchText.textContent = 'Have an account?';
+            switchBtn.textContent = 'Login';
+            signupExtra.style.display = 'block';
+        }
+    };
+
+    const handleAuthSubmit = async (e) => {
+        const email = document.getElementById('auth-email').value;
+        const password = document.getElementById('auth-password').value;
+        authError.style.display = 'none';
+
+        try {
+            if (authMode === 'login') {
+                const { error } = await signIn(email, password);
+                if (error) throw error;
+            } else {
+                const confirm = document.getElementById('auth-password-confirm').value;
+                if (password !== confirm) throw new Error('Passwords do not match');
+                const { error } = await signUp(email, password);
+                if (error) throw error;
+                alert('Account created. Please check email or sign in.');
+                authMode = 'login';
+                updateAuthUI();
+                return;
+            }
+            closeAuthModal();
+            loadScreener();
+        } catch (err) {
+            authError.textContent = err.message;
+            authError.style.display = 'block';
+        }
+    };
+
+    const updateAuthButton = (user) => {
+        const authBtn = document.getElementById('auth-btn');
+        if (!authBtn) return;
+        if (user) {
+            authBtn.textContent = 'Logout';
+            authBtn.onclick = async () => {
+                await signOut();
+                loadScreener();
+            };
+        } else {
+            authBtn.textContent = 'Login';
+            authBtn.onclick = openAuthModal;
+        }
+    };
+
+    const showLoginMessage = () => {
+        const grid = document.querySelector('.screener-grid');
+        if (grid) {
+            grid.innerHTML = `
+                <div style="grid-column: 1 / -1; padding: 100px 0; text-align: center; background: var(--surface-white); border-radius: var(--radius-lg);">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">🔒</div>
+                    <h3>Private Access</h3>
+                    <p>Please log in to analyze your portfolio opportunities.</p>
+                    <button class="btn btn-primary" onclick="screener.openAuthModal()" style="margin-top: 20px;">Login Access</button>
+                </div>
+            `;
+        }
+    };
+
+    window.screener = {
+        openAuthModal,
+        closeAuthModal,
+        toggleAuthMode,
+        handleAuthSubmit
+    };
 
     // --- Dark Mode Logic ---
     const themeToggle = document.getElementById('theme-toggle');
