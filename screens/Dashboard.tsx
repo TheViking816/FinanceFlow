@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { listAccounts } from '../data/accounts';
 import { listCategories } from '../data/categories';
 import { listHoldings } from '../data/holdings';
-import { getLatestPrices, getPriceKey } from '../data/prices';
+import { getLatestPrices, getPriceKey, getSheetHoldings } from '../data/prices';
 import { listRecentTransactions } from '../data/transactions';
 import { listSnapshots, upsertSnapshot, getLatestSnapshot } from '../data/snapshots';
 import { getProfile } from '../data/profiles';
@@ -59,7 +59,7 @@ const Dashboard: React.FC = () => {
   const autoSnapshotAttempted = useRef(false);
 
   const { data, loading, error, refetch } = useQuery(async () => {
-    const [profile, accounts, categories, transactions, holdings, snapshots, latestSnapshot] = await Promise.all([
+    const [profile, accounts, categories, transactions, holdings, snapshots, latestSnapshot, sheetHoldings] = await Promise.all([
       getProfile(),
       listAccounts(),
       listCategories(),
@@ -67,9 +67,10 @@ const Dashboard: React.FC = () => {
       listHoldings(),
       listSnapshots(),
       getLatestSnapshot(),
+      getSheetHoldings(),
     ]);
     const latestPrices = await getLatestPrices(holdings);
-    return { profile, accounts, categories, transactions, holdings, latestPrices, snapshots, latestSnapshot };
+    return { profile, accounts, categories, transactions, holdings, latestPrices, snapshots, latestSnapshot, sheetHoldings };
   }, []);
 
   const baseCurrency = (data?.profile?.base_currency ?? 'EUR').toUpperCase();
@@ -95,27 +96,39 @@ const Dashboard: React.FC = () => {
   }, [balances, data]);
 
   const { rates: fxSheetRates } = useFxRates(baseCurrency);
+  const fxSnapshotRates = (data?.latestSnapshot?.breakdown_json as Record<string, unknown> | undefined)?.fxRates as
+    | Record<string, number>
+    | undefined;
+  const fxRates = Object.keys(fxSheetRates).length ? fxSheetRates : fxSnapshotRates ?? {};
+  const sheetHoldings = data?.sheetHoldings ?? [];
+  const useSheetHoldings = sheetHoldings.length > 0;
   const investmentsTotal = useMemo(() => {
     if (!data) return 0;
-    const fxSnapshotRates = (data.latestSnapshot?.breakdown_json as Record<string, unknown> | undefined)?.fxRates as
-      | Record<string, number>
-      | undefined;
-    const fxRates = Object.keys(fxSheetRates).length ? fxSheetRates : fxSnapshotRates ?? {};
+    if (useSheetHoldings) {
+      return sheetHoldings.reduce((sum, entry) => {
+        const price = Number(entry.price) || 0;
+        const quantity = Number(entry.quantity) || 0;
+        const value = price * quantity;
+        const currency = (entry.currency || baseCurrency).toUpperCase();
+        const rate = currency === baseCurrency ? 1 : fxRates?.[currency];
+        return sum + (rate ? value * rate : value);
+      }, 0);
+    }
     return data.holdings.reduce((sum, holding) => {
       const key = getPriceKey(holding.ticker, holding.market ?? null);
       const latest = data.latestPrices.get(key);
       const price = latest ? Number(latest.close_price) : 0;
       const value = Number(holding.quantity) * price;
-      if (holding.currency === baseCurrency) {
+      if ((holding.currency ?? baseCurrency) === baseCurrency) {
         return sum + value;
       }
-      const rate = fxRates?.[holding.currency];
+      const rate = fxRates?.[holding.currency ?? baseCurrency];
       if (rate) {
         return sum + value * rate;
       }
       return sum + value;
     }, 0);
-  }, [data, baseCurrency, fxSheetRates]);
+  }, [data, baseCurrency, fxRates, sheetHoldings, useSheetHoldings]);
 
   const netWorth = accountTotal + investmentsTotal;
 
