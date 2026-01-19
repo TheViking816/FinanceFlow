@@ -6,18 +6,18 @@ const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ7SVCAW
 function parseSpanishNum(val: string | number | null): number {
   if (val === null || val === undefined) return 0;
   if (typeof val === 'number') return val;
-  
+
   let clean = val.toString().replace(/"/g, '').trim();
   if (clean === '' || clean === '#N/A' || clean === '#DIV/0!') return 0;
-  
+
   clean = clean.replace('%', '').replace('€', '').replace('$', '');
-  
+
   if (clean.includes(',') && clean.includes('.')) {
     clean = clean.replace(/\./g, '').replace(',', '.');
   } else {
     clean = clean.replace(',', '.');
   }
-  
+
   const num = parseFloat(clean);
   return isNaN(num) ? 0 : num;
 }
@@ -31,7 +31,7 @@ export async function fetchAllData(): Promise<{ marketData: MarketData, holdings
   const response = await fetch(`${SHEET_CSV_URL}&t=${Date.now()}`);
   const csvText = await response.text();
   const lines = csvText.split('\n');
-  
+
   const parseLine = (text: string) => {
     const result: string[] = [];
     let curValue = '';
@@ -79,7 +79,7 @@ export async function fetchAllData(): Promise<{ marketData: MarketData, holdings
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line || line.startsWith(',,,,')) continue;
-    
+
     const cols = parseLine(line);
     const ticker = cols[idx.ticker];
     if (!ticker) continue;
@@ -139,7 +139,7 @@ export async function fetchAllData(): Promise<{ marketData: MarketData, holdings
 
   const totalValue = holdings.reduce((sum, h) => sum + h.valueInEUR, 0);
   const totalAnnualIncome = holdings.reduce((sum, h) => sum + h.annualIncomeEUR, 0);
-  
+
   holdings.forEach(h => {
     h.weight = totalValue > 0 ? (h.valueInEUR / totalValue) * 100 : 0;
   });
@@ -154,7 +154,7 @@ export async function fetchAllData(): Promise<{ marketData: MarketData, holdings
       dividendYield: totalValue > 0 ? (totalAnnualIncome / totalValue) * 100 : 0,
       yoc: summaryYoc,
       holdingsCount: holdings.length,
-      dailyChange: 0
+      dailyChange: holdings.reduce((sum, h) => sum + (h.weight * h.dailyChange), 0) / 100
     }
   };
 }

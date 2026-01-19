@@ -197,6 +197,9 @@ const App: React.FC = () => {
       h.weight = totalValue > 0 ? (h.valueInEUR / totalValue) * 100 : 0;
     });
 
+    // Calcular cambio diario ponderado (sin FX)
+    const dailyChange = holdings.reduce((sum, h) => sum + (h.weight * h.dailyChange), 0) / 100;
+
     return {
       holdings,
       summary: {
@@ -206,7 +209,7 @@ const App: React.FC = () => {
         dividendYield: totalValue > 0 ? (totalAnnualIncome / totalValue) * 100 : 0,
         yoc: totalCostBasisEUR > 0 ? (totalAnnualIncome / totalCostBasisEUR) * 100 : 0,
         holdingsCount: holdings.length,
-        dailyChange: 0
+        dailyChange: dailyChange
       }
     };
   };
@@ -488,7 +491,46 @@ const App: React.FC = () => {
       })
       .slice(0, 10);
 
-    return { byPer, byYield, byLoss, byNearLow };
+    // Tier Logic
+    const counts = new Map<string, { count: number, data: any, lists: string[] }>();
+    const processList = (list: any[], listName: string) => {
+      list.forEach(item => {
+        const t = cleanTicker(item.ticker).toUpperCase();
+        const existing = counts.get(t);
+        if (existing) {
+          existing.count += 1;
+          if (!existing.lists.includes(listName)) existing.lists.push(listName);
+        } else {
+          counts.set(t, { count: 1, data: item, lists: [listName] });
+        }
+      });
+    };
+
+    processList(byPer, 'Min PER');
+    processList(byYield, 'Max Yield');
+    processList(byNearLow, '52w Low');
+    processList(byLoss, 'Max Loss');
+
+    const tiered = Array.from(counts.values())
+      .map(v => ({ ...v.data as any, tierCount: v.count, lists: v.lists }))
+      .filter(v => v.tierCount >= 2)
+      .sort((a, b) => b.tierCount - a.tierCount);
+
+    const tier1 = tiered.filter(t => t.tierCount >= 4);
+    const tier2 = tiered.filter(t => (t as any).tierCount === 3);
+    const tier3 = tiered.filter(t => (t as any).tierCount === 2);
+
+    return {
+      byPer,
+      byYield,
+      byLoss,
+      byNearLow,
+      tiers: {
+        tier1: tier1 as any[],
+        tier2: tier2 as any[],
+        tier3: tier3 as any[]
+      }
+    };
   }, [marketData, portfolio]);
 
   const requestSort = (key: keyof Holding | 'rangeScore') => {
@@ -502,16 +544,16 @@ const App: React.FC = () => {
   const formatCurrency = (val: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(val);
   const portfolioYoc = portfolio?.summary?.yoc ?? 0;
   const isDark = theme === 'dark';
-  const pageClass = isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900';
+  const pageClass = isDark ? 'bg-slate-950 text-slate-100' : 'bg-[#f4f7f6] text-slate-900';
   const surfaceClass = isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200';
-  const surfaceSoftClass = isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-slate-50/80 border-slate-200';
+  const surfaceSoftClass = isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200';
   const mutedText = isDark ? 'text-slate-400' : 'text-slate-500';
   const mutedTextStrong = isDark ? 'text-slate-300' : 'text-slate-600';
   const primaryText = isDark ? 'text-slate-100' : 'text-slate-900';
   const navIdleClass = isDark ? 'text-slate-500 border-transparent hover:text-white' : 'text-slate-500 border-transparent hover:text-slate-900';
   const headerMutedText = isDark ? 'text-slate-400' : 'text-slate-600';
-  const dividerClass = isDark ? 'divide-slate-800' : 'divide-slate-100';
-  const rowHoverClass = isDark ? 'hover:bg-slate-800/60' : 'hover:bg-slate-50/80';
+  const dividerClass = isDark ? 'divide-slate-800' : 'divide-slate-200';
+  const rowHoverClass = isDark ? 'hover:bg-slate-800/60' : 'hover:bg-slate-100/40';
   const headerRowClass = isDark ? 'text-slate-300 border-slate-800' : 'text-slate-500 border-slate-200';
   const tableTitleClass = isDark ? 'text-amber-300' : 'text-amber-600';
   const sheetBadgeClass = isDark ? 'text-teal-300 bg-teal-900/40 border-teal-800' : 'text-teal-600 bg-teal-50 border-teal-100';
@@ -666,8 +708,14 @@ const App: React.FC = () => {
 
             {activeTab === 'portfolio' ? (
               <div className={`rounded-[2.5rem] shadow-sm border mb-12 ${surfaceClass}`}>
-                <div className={`px-8 py-6 border-b flex justify-between items-center ${surfaceSoftClass}`}>
-                  <h3 className={`font-black text-xs uppercase tracking-[0.3em] ${tableTitleClass}`}>Datos en Tiempo Real</h3>
+                <div className={`px-8 py-6 border-b flex flex-wrap justify-between items-center gap-4 ${surfaceSoftClass}`}>
+                  <div className="flex items-center gap-4">
+                    <h3 className={`font-black text-xs uppercase tracking-[0.3em] ${tableTitleClass}`}>Datos en Tiempo Real</h3>
+                    <div className={`px-3 py-1 rounded-full text-sm font-black flex items-center gap-2 ${portfolio?.summary.dailyChange! >= 0 ? gainPositiveClass : gainNegativeClass}`}>
+                      <span className="text-xs uppercase tracking-widest opacity-70">Hoy:</span>
+                      <span>{portfolio?.summary.dailyChange! >= 0 ? '+' : ''}{portfolio?.summary.dailyChange?.toFixed(2)}%</span>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setShowAddModal(true)}
@@ -847,7 +895,83 @@ const App: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4">
+              <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6">
+                {/* Visual Tier Section */}
+                {(screenerInsights?.tiers.tier1.length! > 0 || screenerInsights?.tiers.tier2.length! > 0 || screenerInsights?.tiers.tier3.length! > 0) && (
+                  <div className={`rounded-[3rem] p-10 border shadow-2xl overflow-hidden relative ${surfaceClass}`}>
+                    <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+                      <svg className="w-64 h-64 text-teal-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                    </div>
+
+                    <div className="relative mb-12">
+                      <h3 className={`text-3xl font-black tracking-tighter ${primaryText}`}>Screener Visual</h3>
+                      <p className={`text-sm font-bold uppercase tracking-[0.2em] mt-2 ${mutedText}`}>Las empresas más atractivas según convergencia de indicadores</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                      {/* Tier 1 */}
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3 mb-6">
+                          <span className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-white font-black shadow-lg">1</span>
+                          <span className="text-xs font-black uppercase tracking-widest text-amber-500">Tier 1 (4/4)</span>
+                        </div>
+                        <div className="space-y-3">
+                          {screenerInsights?.tiers.tier1.map(s => (
+                            <div key={s.ticker} title={`En screener: ${s.lists.join(', ')}`} className={`p-4 rounded-3xl border transition-all cursor-help ${isDark ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className={`font-black text-xl ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>{cleanTicker(s.ticker)}</span>
+                                <span className="text-sm font-black flex items-center gap-1">🌟🌟🌟🌟</span>
+                              </div>
+                              <div className={`text-xs font-bold uppercase truncate ${mutedText}`}>{s.name}</div>
+                            </div>
+                          ))}
+                          {screenerInsights?.tiers.tier1.length === 0 && <div className={`text-xs font-bold uppercase italic py-4 ${mutedText}`}>Sin activos en Tier 1</div>}
+                        </div>
+                      </div>
+
+                      {/* Tier 2 */}
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3 mb-6">
+                          <span className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-black shadow-lg">2</span>
+                          <span className="text-xs font-black uppercase tracking-widest text-teal-400">Tier 2 (3/4)</span>
+                        </div>
+                        <div className="space-y-3">
+                          {screenerInsights?.tiers.tier2.map(s => (
+                            <div key={s.ticker} title={`En screener: ${s.lists.join(', ')}`} className={`p-4 rounded-3xl border transition-all cursor-help ${isDark ? 'bg-teal-500/10 border-teal-500/20' : 'bg-teal-50 border-teal-200'}`}>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className={`font-black text-xl ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{cleanTicker(s.ticker)}</span>
+                                <span className="text-sm font-black opacity-60">💎💎💎</span>
+                              </div>
+                              <div className={`text-xs font-bold uppercase truncate ${mutedText}`}>{s.name}</div>
+                            </div>
+                          ))}
+                          {screenerInsights?.tiers.tier2.length === 0 && <div className={`text-xs font-bold uppercase italic py-4 ${mutedText}`}>Sin activos en Tier 2</div>}
+                        </div>
+                      </div>
+
+                      {/* Tier 3 */}
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3 mb-6">
+                          <span className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-black shadow-lg">3</span>
+                          <span className="text-xs font-black uppercase tracking-widest text-indigo-400">Tier 3 (2/4)</span>
+                        </div>
+                        <div className="space-y-3">
+                          {screenerInsights?.tiers.tier3.map(s => (
+                            <div key={s.ticker} title={`En screener: ${s.lists.join(', ')}`} className={`p-4 rounded-3xl border transition-all cursor-help ${isDark ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-200'}`}>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className={`font-black text-xl ${isDark ? 'text-indigo-300' : 'text-indigo-700'}`}>{cleanTicker(s.ticker)}</span>
+                                <span className="text-sm font-black opacity-40">✨✨</span>
+                              </div>
+                              <div className={`text-xs font-bold uppercase truncate ${mutedText}`}>{s.name}</div>
+                            </div>
+                          ))}
+                          {screenerInsights?.tiers.tier3.length === 0 && <div className={`text-xs font-bold uppercase italic py-4 ${mutedText}`}>Sin activos en Tier 3</div>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-8">
                   {/* Min PER */}
                   <div className={`rounded-[2.5rem] p-8 shadow-sm border flex flex-col ${surfaceClass}`}>
