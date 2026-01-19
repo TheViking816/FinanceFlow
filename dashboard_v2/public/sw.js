@@ -1,16 +1,20 @@
-const CACHE_NAME = 'financeflow-v1';
+const CACHE_NAME = 'financeflow-v2';
 const urlsToCache = [
     '/',
     '/index.html',
-    '/index.css',
-    '/index.tsx',
-    '/App.tsx'
+    '/manifest.json',
+    '/icon-192.png',
+    '/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(urlsToCache))
+            .then((cache) => {
+                return Promise.allSettled(
+                    urlsToCache.map(url => cache.add(url))
+                );
+            })
     );
 });
 

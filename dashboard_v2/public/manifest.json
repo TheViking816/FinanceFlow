@@ -10,15 +10,15 @@
     "orientation": "portrait-primary",
     "icons": [
         {
-            "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Ccircle cx='96' cy='96' r='90' fill='%2314b8a6'/%3E%3Cpath d='M104 30L48 108h42v54l60-72h-42z' fill='white'/%3E%3C/svg%3E",
+            "src": "/icon-192.png",
             "sizes": "192x192",
-            "type": "image/svg+xml",
+            "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Ccircle cx='256' cy='256' r='240' fill='%2314b8a6'/%3E%3Cpath d='M278 80L128 288h112v144l160-192h-112z' fill='white'/%3E%3C/svg%3E",
+            "src": "/icon-512.png",
             "sizes": "512x512",
-            "type": "image/svg+xml",
+            "type": "image/png",
             "purpose": "any maskable"
         }
     ]
