@@ -1,6 +1,7 @@
 {
-    "name": "FinanceFlow DGI",
-    "short_name": "FinanceFlow",
+    "id": "financeflow-dgi-v2",
+    "name": "FinanceFlow DGI v2",
+    "short_name": "FF DGI v2",
     "description": "Dashboard DGI para gestión de cartera de dividendos",
     "start_url": "/",
     "display": "standalone",
