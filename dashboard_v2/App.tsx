@@ -68,6 +68,8 @@ const App: React.FC = () => {
   const [addForm, setAddForm] = useState({ ticker: '', shares: '', costPerShare: '' });
   const [manualForm, setManualForm] = useState({ ticker: '', shares: '', costPerShare: '' });
   const [addError, setAddError] = useState('');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     if (typeof window === 'undefined') return 'dark';
     const stored = localStorage.getItem('ff-theme');
@@ -78,6 +80,30 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('ff-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallButton(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -579,6 +605,16 @@ const App: React.FC = () => {
                   {isSignup ? 'Ya tengo cuenta' : 'Crear cuenta nueva'}
                 </button>
               </div>
+              {showInstallButton && (
+                <div className="mt-6">
+                  <button
+                    onClick={handleInstallClick}
+                    className={`w-full py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg border-2 ${isDark ? 'bg-slate-800 text-teal-400 border-teal-500 hover:bg-slate-700' : 'bg-teal-50 text-teal-600 border-teal-500 hover:bg-teal-100'}`}
+                  >
+                    📱 Instalar App
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ) : (

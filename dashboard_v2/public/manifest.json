@@ -1,0 +1,24 @@
+{
+    "name": "FinanceFlow DGI",
+    "short_name": "FinanceFlow",
+    "description": "Dashboard DGI para gestión de cartera de dividendos",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#14b8a6",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Ccircle cx='96' cy='96' r='90' fill='%2314b8a6'/%3E%3Cpath d='M104 30L48 108h42v54l60-72h-42z' fill='white'/%3E%3C/svg%3E",
+            "sizes": "192x192",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Ccircle cx='256' cy='256' r='240' fill='%2314b8a6'/%3E%3Cpath d='M278 80L128 288h112v144l160-192h-112z' fill='white'/%3E%3C/svg%3E",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}
