@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financeflow-v2';
+const CACHE_NAME = 'financeflow-v3';
 const urlsToCache = [
     '/',
     '/index.html',

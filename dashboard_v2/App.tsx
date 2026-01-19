@@ -7,9 +7,12 @@ import { Holding, PortfolioSummary, MarketData, HoldingUser, HoldingPending } fr
 type SortConfig = { key: keyof Holding | 'rangeScore' | 'none', direction: 'asc' | 'desc' };
 
 const Logo = ({ className = "w-8 h-8" }) => (
-  <div className={`${className} bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl shadow-lg shadow-teal-900/20 flex items-center justify-center overflow-hidden`}>
-    <svg viewBox="0 0 24 24" className="w-5 h-5 text-white fill-current" xmlns="http://www.w3.org/2000/svg">
+  <div className={`${className} bg-teal-500 rounded-full flex items-center justify-center overflow-hidden`}>
+    <svg viewBox="0 0 24 24" className="w-4/5 h-4/5 text-white fill-current" xmlns="http://www.w3.org/2000/svg">
       <path d="M13 3L4 14h7v7l9-11h-7z" />
+      <rect x="5" y="16" width="3" height="4" />
+      <rect x="10" y="12" width="3" height="8" />
+      <rect x="15" y="8" width="3" height="12" />
     </svg>
   </div>
 );
