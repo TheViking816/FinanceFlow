@@ -20,7 +20,7 @@ const Range52w = ({ price, low, high, thin = false, isDark = true }: { price: nu
   if (!low || !high) return <div className={`text-xs ${labelClass}`}>N/A</div>;
   const percent = ((price - low) / (high - low)) * 100;
   const clamped = Math.min(Math.max(percent, 0), 100);
-  
+
   return (
     <div className={`${thin ? 'w-16' : 'w-24'} flex flex-col gap-1`}>
       {!thin && (
@@ -30,7 +30,7 @@ const Range52w = ({ price, low, high, thin = false, isDark = true }: { price: nu
         </div>
       )}
       <div className={`${thin ? 'h-1' : 'h-1.5'} w-full ${trackClass} rounded-full overflow-hidden relative`}>
-        <div 
+        <div
           className={`absolute h-full ${thin ? 'w-1.5' : 'w-2'} bg-teal-500 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.6)] transition-all duration-1000`}
           style={{ left: `calc(${clamped}% - ${thin ? '3px' : '4px'})` }}
         />
@@ -54,7 +54,7 @@ const App: React.FC = () => {
   const [portfolio, setPortfolio] = useState<{ holdings: Holding[], summary: PortfolioSummary } | null>(null);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'valueInEUR', direction: 'desc' });
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
@@ -413,7 +413,7 @@ const App: React.FC = () => {
     if (sortConfig.key !== 'none') {
       items.sort((a: any, b: any) => {
         let aVal, bVal;
-        
+
         if (sortConfig.key === 'rangeScore') {
           // Calcular score de proximidad al mínimo (0-100)
           aVal = (a.low52w && a.high52w) ? (a.price - a.low52w) / (a.high52w - a.low52w) : 999;
@@ -434,7 +434,7 @@ const App: React.FC = () => {
   const screenerInsights = useMemo(() => {
     if (!marketData || !portfolio) return null;
     const stocks = Object.values(marketData) as MarketData[string][];
-    
+
     const byPer = stocks
       .filter(s => s.per !== 'N/A' && s.per !== '' && !isNaN(Number(s.per)) && Number(s.per) > 0)
       .sort((a, b) => Number(a.per) - Number(b.per))
@@ -519,12 +519,9 @@ const App: React.FC = () => {
               <Logo className="w-10 h-10" />
               <div className="flex flex-col">
                 <span className="text-xl font-black tracking-tighter uppercase leading-none">FinanceFlow <span className="text-teal-400">DGI</span></span>
-                <span className="text-xs font-bold text-teal-500 uppercase tracking-widest mt-1 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></span> Terminal v2.5
-                </span>
               </div>
             </div>
-            
+
             <nav className="hidden md:flex items-center gap-12 text-sm font-black uppercase tracking-[0.2em]">
               <button onClick={() => setActiveTab('portfolio')} className={`transition-all pb-1 border-b-2 ${activeTab === 'portfolio' ? 'text-teal-400 border-teal-400' : navIdleClass}`}>Cartera</button>
               <button onClick={() => setActiveTab('screener')} className={`transition-all pb-1 border-b-2 ${activeTab === 'screener' ? 'text-teal-400 border-teal-400' : navIdleClass}`}>Screener</button>
@@ -595,43 +592,43 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10 animate-in fade-in slide-in-from-top-4">
-                {[
-                  { label: 'Valor Cartera', value: formatCurrency(portfolio?.summary.totalValue || 0), color: primaryText },
-                  { 
-                    label: 'Ingresos', 
-                    value: (
-                      <div className="flex flex-col">
-                        <span className="text-teal-400 text-2xl">{formatCurrency(portfolio?.summary.totalAnnualIncome || 0)} <small className="text-xs opacity-60">/AÑO</small></span>
-                        <span className="text-amber-300 text-xl">{formatCurrency(portfolio?.summary.monthlyIncome || 0)} <small className="text-xs opacity-60">/MES</small></span>
-                      </div>
-                    ), 
-                    color: '' 
-                  },
-                  { 
-                    label: 'Rentabilidad', 
-                    value: (
-                      <div className="flex flex-col">
-                        <span className="text-teal-400 text-2xl">{portfolio?.summary.dividendYield.toFixed(2)}% <small className="text-xs opacity-60">YIELD</small></span>
-                        <span className="text-amber-300 text-xl">{portfolioYoc.toFixed(2)}% <small className="text-xs opacity-60">YOC</small></span>
-                      </div>
-                    ), 
-                    color: '' 
-                  },
-                  { label: 'Total Activos', value: portfolio?.summary.holdingsCount, color: mutedTextStrong },
-                ].map((card, idx) => (
-                  <div key={idx} className={`p-6 md:p-8 rounded-[2.5rem] shadow-sm border flex flex-col justify-center hover:shadow-md transition-shadow ${surfaceClass}`}>
-                    <p className={`text-xs font-black uppercase tracking-[0.25em] mb-3 ${mutedText}`}>{card.label}</p>
-                    <div className={`text-3xl md:text-4xl font-black tracking-tighter ${card.color}`}>{card.value}</div>
-                  </div>
-                ))}
-              </div>
+                  {[
+                    { label: 'Valor Cartera', value: formatCurrency(portfolio?.summary.totalValue || 0), color: primaryText },
+                    {
+                      label: 'Ingresos',
+                      value: (
+                        <div className="flex flex-col">
+                          <span className="text-teal-400 text-2xl">{formatCurrency(portfolio?.summary.totalAnnualIncome || 0)} <small className="text-xs opacity-60">/AÑO</small></span>
+                          <span className="text-amber-300 text-xl">{formatCurrency(portfolio?.summary.monthlyIncome || 0)} <small className="text-xs opacity-60">/MES</small></span>
+                        </div>
+                      ),
+                      color: ''
+                    },
+                    {
+                      label: 'Rentabilidad',
+                      value: (
+                        <div className="flex flex-col">
+                          <span className="text-teal-400 text-2xl">{portfolio?.summary.dividendYield.toFixed(2)}% <small className="text-xs opacity-60">YIELD</small></span>
+                          <span className="text-amber-300 text-xl">{portfolioYoc.toFixed(2)}% <small className="text-xs opacity-60">YOC</small></span>
+                        </div>
+                      ),
+                      color: ''
+                    },
+                    { label: 'Total Activos', value: portfolio?.summary.holdingsCount, color: mutedTextStrong },
+                  ].map((card, idx) => (
+                    <div key={idx} className={`p-6 md:p-8 rounded-[2.5rem] shadow-sm border flex flex-col justify-center hover:shadow-md transition-shadow ${surfaceClass}`}>
+                      <p className={`text-xs font-black uppercase tracking-[0.25em] mb-3 ${mutedText}`}>{card.label}</p>
+                      <div className={`text-3xl md:text-4xl font-black tracking-tighter ${card.color}`}>{card.value}</div>
+                    </div>
+                  ))}
+                </div>
               </>
             )}
 
             {activeTab === 'portfolio' ? (
-              <div className={`rounded-[2.5rem] shadow-sm border overflow-hidden mb-12 ${surfaceClass}`}>
+              <div className={`rounded-[2.5rem] shadow-sm border mb-12 ${surfaceClass}`}>
                 <div className={`px-8 py-6 border-b flex justify-between items-center ${surfaceSoftClass}`}>
-                  <h3 className={`font-black text-xs uppercase tracking-[0.3em] ${tableTitleClass}`}>Monitor de Activos en Tiempo Real</h3>
+                  <h3 className={`font-black text-xs uppercase tracking-[0.3em] ${tableTitleClass}`}>Datos en Tiempo Real</h3>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setShowAddModal(true)}
@@ -639,10 +636,10 @@ const App: React.FC = () => {
                     >
                       Añadir
                     </button>
-                    <span className={`text-sm font-bold px-3 py-1 rounded-full border ${sheetBadgeClass}`}>Sheets Direct Link</span>
                   </div>
                 </div>
-                <div className="overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className={`border-b text-sm uppercase tracking-widest font-black ${headerRowClass}`}>
@@ -675,7 +672,7 @@ const App: React.FC = () => {
                             </span>
                           </td>
                           <td className="px-6 py-5 flex justify-center items-center h-full mt-2">
-                             <Range52w price={h.price} low={h.low52w} high={h.high52w} isDark={isDark} />
+                            <Range52w price={h.price} low={h.low52w} high={h.high52w} isDark={isDark} />
                           </td>
                           <td className="px-6 py-5 font-black text-teal-400 text-lg text-center">{h.yieldPct.toFixed(2)}%</td>
                           <td className="px-6 py-5 font-black text-amber-400 text-base text-center">{h.yoc.toFixed(2)}%</td>
@@ -692,15 +689,17 @@ const App: React.FC = () => {
                                   setEditHolding(h);
                                   setManualForm({ ticker: h.rawTicker, shares: String(h.shares), costPerShare: String(h.costPerShare) });
                                 }}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest border ${isDark ? 'text-teal-300 border-slate-700 hover:bg-slate-800' : 'text-teal-600 border-slate-200 hover:bg-slate-100'}`}
+                                className={`px-3 py-2 rounded-xl text-lg border transition-all ${isDark ? 'text-teal-300 border-slate-700 hover:bg-slate-800' : 'text-teal-600 border-slate-200 hover:bg-slate-100'}`}
+                                title="Editar"
                               >
-                                Editar
+                                ✏️
                               </button>
                               <button
                                 onClick={() => handleDeleteHolding(h)}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest border ${isDark ? 'text-red-300 border-slate-700 hover:bg-slate-800' : 'text-red-500 border-slate-200 hover:bg-slate-100'}`}
+                                className={`px-3 py-2 rounded-xl text-lg border transition-all ${isDark ? 'text-red-300 border-slate-700 hover:bg-slate-800' : 'text-red-500 border-slate-200 hover:bg-slate-100'}`}
+                                title="Eliminar"
                               >
-                                Eliminar
+                                🗑️
                               </button>
                             </div>
                           </td>
@@ -709,6 +708,104 @@ const App: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden p-4 space-y-4">
+                  {/* Mobile Sort Controls */}
+                  <div className={`flex items-center gap-3 pb-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+                    <span className={`text-xs font-black uppercase tracking-widest ${mutedText}`}>Ordenar:</span>
+                    <select
+                      value={sortConfig.key}
+                      onChange={(e) => {
+                        const key = e.target.value as keyof Holding | 'rangeScore' | 'none';
+                        setSortConfig({ key, direction: 'desc' });
+                      }}
+                      className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold border ${isDark ? 'bg-slate-800 text-slate-100 border-slate-700' : 'bg-white text-slate-900 border-slate-200'}`}
+                    >
+                      <option value="none">Sin ordenar</option>
+                      <option value="weight">Peso %</option>
+                      <option value="yieldPct">Yield %</option>
+                      <option value="gainLoss">Retorno %</option>
+                      <option value="valueInEUR">Valor</option>
+                      <option value="ticker">Ticker</option>
+                    </select>
+                  </div>
+
+                  {sortedHoldings.map((h) => (
+                    <div key={h.id} className={`rounded-2xl border p-5 shadow-sm ${surfaceSoftClass}`}>
+                      {/* Header */}
+                      <button onClick={() => setSelectedHolding(h)} className="w-full text-left mb-4">
+                        <div className={`font-black text-2xl leading-tight ${primaryText}`}>{h.ticker}</div>
+                        <div className={`text-sm font-bold uppercase mt-1 tracking-wider ${mutedText}`}>{h.name}</div>
+                      </button>
+
+                      {/* Metrics Grid */}
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                          <div className={`text-xs uppercase tracking-widest ${mutedText} mb-1`}>Acciones</div>
+                          <div className={`font-bold text-lg ${mutedTextStrong}`}>{h.shares}</div>
+                        </div>
+                        <div>
+                          <div className={`text-xs uppercase tracking-widest ${mutedText} mb-1`}>Valor</div>
+                          <div className={`font-black text-lg ${primaryText}`}>{formatCurrency(h.valueInEUR)}</div>
+                        </div>
+                        <div>
+                          <div className={`text-xs uppercase tracking-widest ${mutedText} mb-1`}>Retorno</div>
+                          <span className={`inline-block text-sm font-black px-3 py-1.5 rounded-xl ${h.gainLoss >= 0 ? gainPositiveClass : gainNegativeClass}`}>
+                            {h.gainLoss >= 0 ? '▲' : '▼'} {Math.abs(h.gainLoss).toFixed(2)}%
+                          </span>
+                        </div>
+                        <div>
+                          <div className={`text-xs uppercase tracking-widest ${mutedText} mb-1`}>Yield</div>
+                          <div className="font-black text-teal-400 text-lg">{h.yieldPct.toFixed(2)}%</div>
+                        </div>
+                        <div>
+                          <div className={`text-xs uppercase tracking-widest ${mutedText} mb-1`}>YoC</div>
+                          <div className="font-black text-amber-400 text-lg">{h.yoc.toFixed(2)}%</div>
+                        </div>
+                        <div>
+                          <div className={`text-xs uppercase tracking-widest ${mutedText} mb-1`}>Día</div>
+                          <div className={`font-black text-lg ${h.dailyChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {h.dailyChange >= 0 ? '+' : ''}{h.dailyChange.toFixed(2)}%
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 52w Range */}
+                      <div className="mb-4">
+                        <div className={`text-xs uppercase tracking-widest ${mutedText} mb-2`}>Rango 52 Semanas</div>
+                        <Range52w price={h.price} low={h.low52w} high={h.high52w} isDark={isDark} />
+                      </div>
+
+                      {/* Annual Income */}
+                      <div className="mb-4">
+                        <div className={`text-xs uppercase tracking-widest ${mutedText} mb-1`}>Renta Anual</div>
+                        <div className={`font-black text-lg ${mutedTextStrong}`}>{formatCurrency(h.annualIncomeEUR)}</div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className={`flex gap-2 pt-4 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+                        <button
+                          onClick={() => {
+                            setEditHolding(h);
+                            setManualForm({ ticker: h.rawTicker, shares: String(h.shares), costPerShare: String(h.costPerShare) });
+                          }}
+                          className={`flex-1 px-4 py-3 rounded-xl text-xl border transition-all ${isDark ? 'border-slate-700 hover:bg-slate-800' : 'border-slate-200 hover:bg-slate-100'}`}
+                          title="Editar"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDeleteHolding(h)}
+                          className={`flex-1 px-4 py-3 rounded-xl text-xl border transition-all ${isDark ? 'border-slate-700 hover:bg-slate-800' : 'border-slate-200 hover:bg-slate-100'}`}
+                          title="Eliminar"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4">
@@ -716,7 +813,7 @@ const App: React.FC = () => {
                   {/* Min PER */}
                   <div className={`rounded-[2.5rem] p-8 shadow-sm border flex flex-col ${surfaceClass}`}>
                     <h4 className="text-xs font-black uppercase tracking-[0.2em] text-teal-400 mb-8 flex items-center gap-3">
-                       <span className="w-2 h-2 bg-teal-600 rounded-full"></span> Min PER
+                      <span className="w-2 h-2 bg-teal-600 rounded-full"></span> Min PER
                     </h4>
                     <div className="space-y-4 flex-1">
                       {screenerInsights?.byPer.map(s => (
@@ -737,7 +834,7 @@ const App: React.FC = () => {
                   {/* Max Yield */}
                   <div className={`rounded-[2.5rem] p-8 shadow-sm border flex flex-col ${surfaceClass}`}>
                     <h4 className="text-xs font-black uppercase tracking-[0.2em] text-amber-400 mb-8 flex items-center gap-3">
-                       <span className="w-2 h-2 bg-amber-600 rounded-full"></span> Max Yield
+                      <span className="w-2 h-2 bg-amber-600 rounded-full"></span> Max Yield
                     </h4>
                     <div className="space-y-4 flex-1">
                       {screenerInsights?.byYield.map(s => (
@@ -758,7 +855,7 @@ const App: React.FC = () => {
                   {/* Near 52w Low */}
                   <div className={`rounded-[2.5rem] p-8 shadow-sm border flex flex-col ${surfaceClass}`}>
                     <h4 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400 mb-8 flex items-center gap-3">
-                       <span className="w-2 h-2 bg-indigo-600 rounded-full"></span> 52w Low
+                      <span className="w-2 h-2 bg-indigo-600 rounded-full"></span> 52w Low
                     </h4>
                     <div className="space-y-4 flex-1">
                       {screenerInsights?.byNearLow.map(s => (
@@ -779,7 +876,7 @@ const App: React.FC = () => {
                   {/* Max Loss (Cartera) */}
                   <div className={`rounded-[2.5rem] p-8 shadow-sm border flex flex-col ${surfaceClass}`}>
                     <h4 className="text-xs font-black uppercase tracking-[0.2em] text-red-400 mb-8 flex items-center gap-3">
-                       <span className="w-2 h-2 bg-red-500 rounded-full"></span> Max Loss                    </h4>
+                      <span className="w-2 h-2 bg-red-500 rounded-full"></span> Max Loss                    </h4>
                     <div className="space-y-4 flex-1">
                       {screenerInsights?.byLoss.map(h => (
                         <div key={h.id} className={`flex justify-between items-center group p-4 rounded-2xl transition-all border border-transparent ${rowHoverClass} ${hoverBorderClass}`}>
@@ -789,7 +886,7 @@ const App: React.FC = () => {
                           </div>
                           <div className="text-right">
                             <div className={`font-black text-lg ${h.gainLoss < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                {h.gainLoss.toFixed(2)}%
+                              {h.gainLoss.toFixed(2)}%
                             </div>
                             <div className={`text-sm font-bold ${mutedText}`}>Yield: {h.yieldPct.toFixed(1)}%</div>
                           </div>
@@ -1024,22 +1121,22 @@ const App: React.FC = () => {
       {user && (
         <footer className={`fixed bottom-0 inset-x-0 border-t md:hidden z-50 safe-bottom shadow-[0_-10px_30px_rgba(0,0,0,0.3)] ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
           <div className="flex items-center justify-around h-20">
-            <button 
+            <button
               onClick={() => setActiveTab('portfolio')}
               className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${activeTab === 'portfolio' ? (isDark ? 'text-teal-400 bg-slate-800/50' : 'text-teal-600 bg-slate-100') : 'text-slate-500'}`}
             >
-              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2v8a2 2 0 002 2z" /></svg>
+              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z" /></svg>
               <span className="text-xs font-black uppercase tracking-widest">Cartera</span>
             </button>
-            <button 
-              onClick={loadData}
+            <button
+              onClick={() => setShowAddModal(true)}
               className="flex items-center justify-center -mt-10"
             >
               <div className={`bg-teal-500 p-4 rounded-2xl shadow-xl border-4 active:scale-90 transition-transform ${isDark ? 'shadow-teal-900/40 border-slate-900' : 'shadow-teal-500/30 border-white'}`}>
-                <svg className={`w-6 h-6 text-white ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
               </div>
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('screener')}
               className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${activeTab === 'screener' ? (isDark ? 'text-teal-400 bg-slate-800/50' : 'text-teal-600 bg-slate-100') : 'text-slate-500'}`}
             >
