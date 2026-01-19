@@ -166,7 +166,9 @@ const App: React.FC = () => {
       totalCostBasisEUR += costBasisEUR;
       const gainLoss = costBasisEUR > 0 ? ((valueInEUR - costBasisEUR) / costBasisEUR) * 100 : 0;
       const yieldPct = md?.yieldPct ?? override?.yield_pct ?? 0;
-      const annualIncomeEUR = md?.income ?? (yieldPct / 100) * valueInEUR;
+      const annualIncomeEUR = (md?.dividendPerShare !== undefined && md.dividendPerShare > 0)
+        ? (md.dividendPerShare * shares)
+        : (yieldPct / 100) * valueInEUR;
 
       return {
         id: `h-${entry.id}`,

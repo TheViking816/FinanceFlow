@@ -2,8 +2,8 @@
 export interface Holding {
   id: string;
   sourceId?: string;
-  ticker: string; 
-  rawTicker: string; 
+  ticker: string;
+  rawTicker: string;
   name: string;
   shares: number;
   costPerShare: number;
@@ -64,7 +64,7 @@ export interface MarketData {
     fx: number;
     shares: number;
     costLocal: number;
-    income: number;
+    dividendPerShare: number;
     per: string | number;
     yieldPct: number;
     dailyChange?: number;

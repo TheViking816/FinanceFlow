@@ -60,9 +60,10 @@ export async function fetchAllData(): Promise<{ marketData: MarketData, holdings
     low52w: 7,
     high52w: 8,
     yield: 9,
+    dividendPerShare: 13,
     shares: 14,
     buyInLocal: 15,
-    annualIncome: 16,
+    totalAnnualIncome: 16,
     per: 18
   };
 
@@ -87,7 +88,8 @@ export async function fetchAllData(): Promise<{ marketData: MarketData, holdings
     const price = parseSpanishNum(cols[idx.price]);
     const shares = parseSpanishNum(cols[idx.shares]);
     const fx = parseSpanishNum(cols[idx.fx]) || 1;
-    const annualIncome = parseSpanishNum(cols[idx.annualIncome]);
+    const dividendPerShare = parseSpanishNum(cols[idx.dividendPerShare]);
+    const totalAnnualIncome = parseSpanishNum(cols[idx.totalAnnualIncome]);
     const dailyChange = parseSpanishNum(cols[idx.changePct]);
     const costBasisLocal = parseSpanishNum(cols[idx.buyInLocal]);
     const low52w = parseSpanishNum(cols[idx.low52w]);
@@ -102,7 +104,7 @@ export async function fetchAllData(): Promise<{ marketData: MarketData, holdings
       fx: fx,
       shares: shares,
       costLocal: costBasisLocal,
-      income: annualIncome,
+      dividendPerShare: dividendPerShare,
       per: (perVal === '#N/A' || !perVal) ? 'N/A' : perVal.replace(',', '.'),
       yieldPct: parseSpanishNum(cols[idx.yield]),
       dailyChange: dailyChange,
@@ -126,9 +128,9 @@ export async function fetchAllData(): Promise<{ marketData: MarketData, holdings
         valueInEUR,
         gainLoss: costBasisEUR > 0 ? ((valueInEUR - costBasisEUR) / costBasisEUR) * 100 : 0,
         yieldPct: parseSpanishNum(cols[idx.yield]),
-        annualIncomeEUR: annualIncome,
+        annualIncomeEUR: totalAnnualIncome,
         per: (perVal === '#N/A' || !perVal) ? 'N/A' : perVal.replace(',', '.'),
-        yoc: costBasisEUR > 0 ? (annualIncome / costBasisEUR) * 100 : 0,
+        yoc: costBasisEUR > 0 ? (totalAnnualIncome / costBasisEUR) * 100 : 0,
         weight: 0,
         dailyChange: dailyChange,
         low52w,
