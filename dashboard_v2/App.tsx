@@ -109,14 +109,29 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error("Auth error on getSession:", error);
+        // Si hay un error de refresh token, forzamos el cierre de sesión para limpiar el estado
+        if (error.message.includes('refresh_token')) {
+          supabase.auth.signOut();
+        }
+      }
       setUser(session?.user ?? null);
-      if (!session) setLoading(false);
+      setLoading(false);
+    }).catch(err => {
+      console.error("Critical session error:", err);
+      setLoading(false);
     });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (!session) setLoading(false);
+      if (_event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+      setLoading(false);
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
@@ -565,7 +580,7 @@ const App: React.FC = () => {
   const tickerOptions = useMemo(() => {
     if (!marketData) return [];
     const map = new Map<string, string>();
-    Object.entries(marketData).forEach(([key, data]) => {
+    Object.entries(marketData).forEach(([key, data]: [string, any]) => {
       const ticker = cleanTicker(key).toUpperCase();
       if (!map.has(ticker)) map.set(ticker, data.name || ticker);
     });

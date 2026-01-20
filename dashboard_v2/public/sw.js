@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financeflow-v3';
+const CACHE_NAME = 'financeflow-v4';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -19,6 +19,21 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    // Network First strategy for HTML/Navigation requests
+    if (event.request.mode === 'navigate' || (event.request.method === 'GET' && event.request.headers.get('accept').includes('text/html'))) {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+                    return response;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
+    // Cache First for other assets
     event.respondWith(
         caches.match(event.request)
             .then((response) => {
