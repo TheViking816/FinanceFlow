@@ -79,6 +79,7 @@ const App: React.FC = () => {
     if (stored === 'dark' || stored === 'light') return stored;
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
+  const useSheetWhenLoggedIn = true;
 
   useEffect(() => {
     localStorage.setItem('ff-theme', theme);
@@ -248,7 +249,7 @@ const App: React.FC = () => {
         dailyChange: 0
       };
 
-      if (user) {
+      if (user && !useSheetWhenLoggedIn) {
         const [{ data: holdingsRows, error }, { data: pendingRows, error: pendingError }] = await Promise.all([
           supabase.from('holdings').select('*').eq('user_id', user.id),
           supabase.from('holdings_pending').select('*').eq('user_id', user.id)
@@ -271,7 +272,7 @@ const App: React.FC = () => {
         }
       }
 
-      if (!user) {
+      if (!user || useSheetWhenLoggedIn) {
         holdings = sheetHoldings;
         summary = sheetSummary;
       }
@@ -282,6 +283,63 @@ const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const upsertHolding = async (ticker: string, shares: number, costPerShare: number, currency: string) => {
+    const { data: existingRows, error: existingError } = await supabase
+      .from('holdings')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('ticker', ticker);
+
+    if (existingError) {
+      console.error('Error buscando posiciones existentes:', existingError);
+      return { error: existingError };
+    }
+
+    if (existingRows && existingRows.length > 0) {
+      const existingShares = existingRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
+      const existingCost = existingRows.reduce((sum, row) => sum + (Number(row.quantity || 0) * Number(row.avg_price || 0)), 0);
+      const totalShares = existingShares + shares;
+      const avgPrice = totalShares > 0 ? (existingCost + (shares * costPerShare)) / totalShares : costPerShare;
+      const primaryId = existingRows[0].id;
+
+      const { error: updateError } = await supabase
+        .from('holdings')
+        .update({ quantity: totalShares, avg_price: avgPrice, currency })
+        .eq('id', primaryId)
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Error actualizando posición existente:', updateError);
+        return { error: updateError };
+      }
+
+      if (existingRows.length > 1) {
+        const extraIds = existingRows.slice(1).map((row) => row.id);
+        const { error: deleteError } = await supabase
+          .from('holdings')
+          .delete()
+          .in('id', extraIds)
+          .eq('user_id', user.id);
+        if (deleteError) {
+          console.error('Error eliminando duplicados:', deleteError);
+        }
+      }
+
+      return { merged: true };
+    }
+
+    const { error } = await supabase
+      .from('holdings')
+      .insert([{ user_id: user.id, ticker, quantity: shares, avg_price: costPerShare, currency }]);
+
+    if (error) {
+      console.error('Error guardando posición:', error);
+      return { error };
+    }
+
+    return { merged: false };
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -337,13 +395,10 @@ const App: React.FC = () => {
       return;
     }
 
-    const { error } = await supabase
-      .from('holdings')
-      .insert([{ user_id: user.id, ticker, quantity: shares, avg_price: costPerShare, currency }]);
+    const { error } = await upsertHolding(ticker, shares, costPerShare, currency);
 
     if (error) {
       setAddError('No se pudo guardar la posición.');
-      console.error('Error guardando posición:', error);
       return;
     }
 
@@ -366,33 +421,53 @@ const App: React.FC = () => {
       return;
     }
 
-    const { error: pendingError } = await supabase
+    const { data: pendingRows, error: pendingFindError } = await supabase
       .from('holdings_pending')
-      .insert([{
-        user_id: user.id,
-        ticker,
-        name: null,
-        currency,
-        price: costPerShare,
-        yield_pct: 0,
-        low52w: null,
-        high52w: null,
-        daily_change: 0
-      }]);
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('ticker', ticker);
 
-    if (pendingError) {
-      setAddError('No se pudo guardar el ticker pendiente.');
-      console.error('Error guardando pendiente:', pendingError);
-      return;
+    if (pendingFindError) {
+      console.error('Error buscando pendiente:', pendingFindError);
     }
 
-    const { error } = await supabase
-      .from('holdings')
-      .insert([{ user_id: user.id, ticker, quantity: shares, avg_price: costPerShare, currency }]);
+    if (pendingRows && pendingRows.length > 0) {
+      const { error: pendingUpdateError } = await supabase
+        .from('holdings_pending')
+        .update({ price: costPerShare, currency })
+        .eq('user_id', user.id)
+        .eq('ticker', ticker);
+      if (pendingUpdateError) {
+        setAddError('No se pudo actualizar el ticker pendiente.');
+        console.error('Error actualizando pendiente:', pendingUpdateError);
+        return;
+      }
+    } else {
+      const { error: pendingError } = await supabase
+        .from('holdings_pending')
+        .insert([{
+          user_id: user.id,
+          ticker,
+          name: null,
+          currency,
+          price: costPerShare,
+          yield_pct: 0,
+          low52w: null,
+          high52w: null,
+          daily_change: 0
+        }]);
+
+      if (pendingError) {
+        setAddError('No se pudo guardar el ticker pendiente.');
+        console.error('Error guardando pendiente:', pendingError);
+        return;
+      }
+    }
+
+    const { error } = await upsertHolding(ticker, shares, costPerShare, currency);
 
     if (error) {
       setAddError('No se pudo guardar la posición.');
-      console.error('Error guardando posición:', error);
       return;
     }
 
@@ -1339,3 +1414,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
