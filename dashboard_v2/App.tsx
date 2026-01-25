@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './services/supabase';
 import { fetchAllData, cleanTicker } from './services/dataService';
+import { analyzeTiers } from './services/aiService';
 import { Holding, PortfolioSummary, MarketData, HoldingUser, HoldingPending } from './types';
 
 type SortConfig = { key: keyof Holding | 'rangeScore' | 'none', direction: 'asc' | 'desc' };
@@ -79,6 +80,13 @@ const App: React.FC = () => {
     if (stored === 'dark' || stored === 'light') return stored;
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
+
+  // AI State
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiReport, setAiReport] = useState('');
+  const [aiKey, setAiKey] = useState(() => localStorage.getItem('ff-ai-key') || '');
+  const [tempKey, setTempKey] = useState('');
   const useSheetWhenLoggedIn = true;
 
   useEffect(() => {
@@ -232,8 +240,13 @@ const App: React.FC = () => {
     };
   };
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const loadData = async () => {
-    setLoading(true);
+    // Si ya tenemos datos (no es la primera carga), usamos isRefreshing para no bloquear la UI
+    if (!loading) setIsRefreshing(true);
+    // Si es la carga inicial (loading=true), mantenemos loading=true para mostrar el splash screen inicial
+
     try {
       const { marketData: mData, holdings: sheetHoldings, summary: sheetSummary } = await fetchAllData();
       setMarketData(mData);
@@ -282,6 +295,7 @@ const App: React.FC = () => {
       console.error("Error sincronizando con Sheets:", err);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -664,7 +678,35 @@ const App: React.FC = () => {
       .sort((a, b) => a.ticker.localeCompare(b.ticker));
   }, [marketData]);
 
-  if (loading && user) return (
+  const handleAnalyze = async () => {
+    if (!aiKey && !tempKey) {
+      // Just focus or show message (modal handles input)
+      return;
+    }
+    const keyToUse = aiKey || tempKey;
+    if (tempKey) {
+      setAiKey(tempKey);
+      localStorage.setItem('ff-ai-key', tempKey);
+    }
+
+    setAnalyzing(true);
+    setAiReport('');
+
+    try {
+      const tier1 = screenerInsights?.tiers.tier1.map(t => `${t.ticker} (${t.name})`) || [];
+      const tier2 = screenerInsights?.tiers.tier2.map(t => `${t.ticker} (${t.name})`) || [];
+      const tier3 = screenerInsights?.tiers.tier3.map(t => `${t.ticker} (${t.name})`) || [];
+
+      const report = await analyzeTiers({ tier1, tier2, tier3, apiKey: keyToUse });
+      setAiReport(report);
+    } catch (err: any) {
+      setAiReport(`Error: ${err.message}`);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  if (loading) return (
     <div className={`flex h-screen items-center justify-center ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
       <div className="text-center">
         <Logo className="w-16 h-16 mx-auto mb-6 animate-bounce" />
@@ -701,7 +743,7 @@ const App: React.FC = () => {
               </button>
               <div className="flex items-center gap-3">
                 <button onClick={loadData} className={`p-2.5 rounded-xl transition shadow-lg border active:scale-90 ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-teal-400 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-teal-600 border-slate-200'}`} title="Refrescar desde Sheets">
-                  <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  <svg className={`w-5 h-5 ${loading || isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                 </button>
                 <button onClick={() => supabase.auth.signOut()} className={`hidden md:block text-xs font-black ${headerMutedText} hover:text-red-400 uppercase tracking-widest transition`}>Cerrar Sesión</button>
               </div>
@@ -995,9 +1037,18 @@ const App: React.FC = () => {
                       <svg className="w-64 h-64 text-teal-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                     </div>
 
-                    <div className="relative mb-12">
-                      <h3 className={`text-3xl font-black tracking-tighter ${primaryText}`}>Screener Visual</h3>
-                      <p className={`text-sm font-bold uppercase tracking-[0.2em] mt-2 ${mutedText}`}>Las empresas más atractivas según convergencia de indicadores</p>
+                    <div className="relative mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                      <div>
+                        <h3 className={`text-3xl font-black tracking-tighter ${primaryText}`}>Screener Visual</h3>
+                        <p className={`text-sm font-bold uppercase tracking-[0.2em] mt-2 ${mutedText}`}>Las empresas más atractivas según convergencia de indicadores</p>
+                      </div>
+                      <button
+                        onClick={() => setShowAIModal(true)}
+                        className={`group flex items-center gap-2 px-5 py-3 rounded-2xl border-2 font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 ${isDark ? 'bg-indigo-600 border-indigo-500 text-white hover:bg-indigo-500' : 'bg-indigo-500 border-indigo-600 text-white hover:bg-indigo-600'}`}
+                      >
+                        <span>🤖</span>
+                        <span>Analizar Tiers (AI)</span>
+                      </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -1369,6 +1420,94 @@ const App: React.FC = () => {
                 <div className={`text-xl font-black ${primaryText}`}>{selectedHolding.weight.toFixed(2)}%</div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showAIModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
+          <div className={`w-full max-w-2xl rounded-[2rem] border p-8 shadow-2xl flex flex-col max-h-[90vh] ${surfaceClass}`}>
+            <div className="flex items-start justify-between mb-6 flex-shrink-0">
+              <div>
+                <div className={`text-2xl font-black ${primaryText}`}>Analista DGI (AI)</div>
+                <div className={`text-sm uppercase tracking-widest ${mutedText}`}>Powered by OpenAI</div>
+              </div>
+              <button onClick={() => setShowAIModal(false)} className={`text-xs font-black uppercase tracking-widest ${mutedText}`}>Cerrar</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto min-h-0 pr-2">
+              {!aiKey && !tempKey ? (
+                <div className="space-y-4">
+                  <div className={`p-6 rounded-2xl border ${isDark ? 'bg-indigo-900/20 border-indigo-500/30' : 'bg-indigo-50 border-indigo-200'}`}>
+                    <p className={`font-bold mb-2 ${primaryText}`}>Requiere API Key</p>
+                    <p className={`text-sm opacity-80 mb-4 ${mutedText}`}>
+                      Para usar el análisis inteligente, necesitas una API Key de OpenAI.
+                      Esta clave se guardará SOLO en tu navegador (LocalStorage).
+                    </p>
+                    <input
+                      type="password"
+                      value={tempKey}
+                      onChange={(e) => setTempKey(e.target.value)}
+                      placeholder="sk-..."
+                      className={`w-full border-0 rounded-xl px-4 py-3 font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition ${isDark ? 'bg-slate-800 text-slate-100 placeholder-slate-500' : 'bg-white text-slate-900 placeholder-slate-400'}`}
+                    />
+                  </div>
+                  <button
+                    onClick={handleAnalyze}
+                    disabled={!tempKey}
+                    className={`w-full py-3 rounded-xl font-black uppercase tracking-widest transition shadow-lg ${!tempKey ? 'opacity-50 cursor-not-allowed bg-slate-500 text-slate-300' : 'bg-indigo-500 text-white hover:bg-indigo-400'}`}
+                  >
+                    Guardar y Analizar
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {analyzing ? (
+                    <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                      <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className={`font-black text-sm uppercase tracking-widest ${primaryText} animate-pulse`}>Analizando Tiers...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {aiReport ? (
+                        <div className={`prose ${isDark ? 'prose-invert' : ''} max-w-none`}>
+                          <div className={`whitespace-pre-wrap font-medium leading-relaxed ${primaryText}`}>
+                            {aiReport}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className={`text-sm ${mutedText}`}>Listo para analizar las mejores oportunidades.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {(aiKey || tempKey) && !analyzing && (
+              <div className="mt-6 pt-6 border-t border-slate-700/50 flex gap-3 flex-shrink-0">
+                <button
+                  onClick={handleAnalyze}
+                  className={`flex-1 py-3 rounded-xl font-black uppercase tracking-widest transition shadow-md bg-indigo-500 text-white hover:bg-indigo-400`}
+                >
+                  {aiReport ? 'Re-Analizar' : 'Analizar Ahora'}
+                </button>
+                <button
+                  onClick={() => {
+                    setAiKey('');
+                    setTempKey('');
+                    localStorage.removeItem('ff-ai-key');
+                    setAiReport('');
+                  }}
+                  className={`px-4 py-3 rounded-xl border font-bold hover:bg-red-500/10 hover:text-red-500 transition ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'}`}
+                  title="Borrar Key"
+                >
+                  🗑️
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
